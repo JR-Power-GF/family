@@ -38,27 +38,42 @@
         </view>
       </view>
 
-      <!-- My Story List -->
-      <view v-if="myStories.length > 0" class="story-list">
-        <view
-          v-for="story in myStories"
-          :key="story._id"
-          class="story-item"
-        >
-          <image class="story-thumb" :src="getStoryThumb(story)" mode="aspectFill" @click="goToStory(story)" />
-          <view class="story-info" @click="goToStory(story)">
-            <text class="story-caption">{{ story.caption }}</text>
-            <text class="story-date">{{ formatDate(story.createdAt) }}</text>
-          </view>
-          <view class="story-actions">
-            <text class="action-edit" @click="editStory(story)">编辑</text>
-            <text class="action-delete" @click="confirmDeleteStory(story)">删除</text>
+      <!-- Story List with Pull to Refresh -->
+      <scroll-view
+        scroll-y
+        class="story-scroll"
+        refresher-enabled
+        :refresher-triggered="refreshing"
+        refresher-default-style="black"
+        @refresherrefresh="onRefresh"
+      >
+        <!-- Refresh indicator -->
+        <view class="refresh-container" slot="refresher">
+          <text class="refresh-text">{{ refreshing ? '刷新中...' : '下拉刷新' }}</text>
+        </view>
+
+        <!-- My Story List -->
+        <view v-if="myStories.length > 0" class="story-list">
+          <view
+            v-for="story in myStories"
+            :key="story._id"
+            class="story-item"
+          >
+            <image class="story-thumb" :src="getStoryThumb(story)" mode="aspectFill" @click="goToStory(story)" />
+            <view class="story-info" @click="goToStory(story)">
+              <text class="story-caption">{{ story.caption }}</text>
+              <text class="story-date">{{ formatDate(story.createdAt) }}</text>
+            </view>
+            <view class="story-actions">
+              <text class="action-edit" @click="editStory(story)">编辑</text>
+              <text class="action-delete" @click="confirmDeleteStory(story)">删除</text>
+            </view>
           </view>
         </view>
-      </view>
 
-      <!-- Empty state -->
-      <EmptyState v-else @add-story="goToAddStory" />
+        <!-- Empty state -->
+        <EmptyState v-else @add-story="goToAddStory" />
+      </scroll-view>
     </view>
 
     <!-- Edit Profile Modal -->
@@ -104,6 +119,7 @@ const defaultAvatar = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/s
 
 // Loading state
 const loading = ref(true)
+const refreshing = ref(false)
 
 const displayName = ref('')
 const displayAvatar = ref('')
@@ -213,6 +229,37 @@ async function convertStoryThumbUrls(stories) {
     storyThumbUrls.value = urlMap
   } catch (e) {
     console.error('Failed to convert story thumb URLs:', e)
+  }
+}
+
+// Pull to refresh
+async function onRefresh() {
+  refreshing.value = true
+
+  try {
+    // Reload stories only (not the full profile)
+    const { result: userInfo } = await wx.cloud.callFunction({
+      name: 'getUserInfo'
+    }).catch(() => ({ result: { openid: currentUserId.value } }))
+
+    const { data: stories } = await db.collection('stories')
+      .where({
+        authorId: currentUserId.value
+      })
+      .orderBy('createdAt', 'desc')
+      .limit(50)
+      .get()
+
+    myStories.value = stories
+    await convertStoryThumbUrls(stories)
+  } catch (e) {
+    console.error('Refresh failed:', e)
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    })
+  } finally {
+    refreshing.value = false
   }
 }
 
@@ -509,6 +556,22 @@ async function deleteStory(story) {
   font-size: 24rpx;
   color: $uni-text-color-grey;
   margin-top: 8rpx;
+}
+
+.story-scroll {
+  height: calc(100vh - 500rpx);
+}
+
+.refresh-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80rpx;
+}
+
+.refresh-text {
+  font-size: 24rpx;
+  color: $uni-text-color-grey;
 }
 
 .story-list {
