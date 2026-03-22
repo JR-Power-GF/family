@@ -181,11 +181,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { onShareAppMessage, onShareTimeline, onLoad } from '@dcloudio/uni-app'
 import { storiesApi } from '../../api/index.js'
 
 const story = ref(null)
 const loading = ref(true)
+const storyId = ref('')
 const tempPhotoUrl = ref('')
 const tempAvatarUrl = ref('')
 const isOwner = ref(false)
@@ -252,12 +253,9 @@ const formattedDate = computed(() => {
   })
 })
 
-onMounted(async () => {
-  const pages = getCurrentPages()
-  const currentPage = pages[pages.length - 1]
-  const storyId = currentPage.options?.id
-
-  if (!storyId) {
+// Load story data function
+async function loadStoryData() {
+  if (!storyId.value) {
     loading.value = false
     return
   }
@@ -269,16 +267,16 @@ onMounted(async () => {
     }).catch(() => ({ result: { openid: '' } }))
     currentOpenId.value = userInfo.openid || ''
 
-    story.value = await storiesApi.getStory(storyId)
+    story.value = await storiesApi.getStory(storyId.value)
 
     if (story.value) {
       await convertCloudUrls()
       // Check if current user is the owner
-      isOwner.value = await storiesApi.isStoryOwner(storyId)
+      isOwner.value = await storiesApi.isStoryOwner(storyId.value)
       // Set likes count from story data
       likesCount.value = story.value.likeCount || 0
       // Check if user has liked
-      isLiked.value = await storiesApi.hasLiked(storyId)
+      isLiked.value = await storiesApi.hasLiked(storyId.value)
     }
   } catch (error) {
     console.error('Failed to load story:', error)
@@ -288,6 +286,16 @@ onMounted(async () => {
       icon: 'none'
     })
   } finally {
+    loading.value = false
+  }
+}
+
+// Use onLoad to get URL parameters (reliable in uni-app)
+onLoad((options) => {
+  storyId.value = options?.id || ''
+  if (storyId.value) {
+    loadStoryData()
+  } else {
     loading.value = false
   }
 })
