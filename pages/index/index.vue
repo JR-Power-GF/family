@@ -42,7 +42,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { fetchStories, groupByMonth } from '../../data/mockStories.js'
+import { storiesApi, groupByMonth } from '../../api/index.js'
 
 const loading = ref(true)
 const refreshing = ref(false)
@@ -56,9 +56,15 @@ onMounted(async () => {
 async function loadStories() {
   loading.value = true
   try {
-    const result = await fetchStories()
+    const result = await storiesApi.getStories()
     stories.value = result.stories
     monthlyGroups.value = groupByMonth(result.stories)
+  } catch (error) {
+    console.error('Failed to load stories:', error)
+    uni.showToast({
+      title: '加载失败',
+      icon: 'none'
+    })
   } finally {
     loading.value = false
   }

@@ -53,6 +53,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { storiesApi } from '../../api/index.js'
 
 const photoPath = ref('')
 const caption = ref('')
@@ -62,7 +63,7 @@ const canPost = computed(() => photoPath.value && caption.value.trim())
 
 function choosePhotoSource() {
   uni.showActionSheet({
-    itemList: ['Choose from Album', 'Take Photo'],
+    itemList: ['从相册选择', '拍照'],
     success: (res) => {
       if (res.tapIndex === 0) {
         chooseFromAlbum()
@@ -100,20 +101,34 @@ async function postStory() {
 
   posting.value = true
 
-  // Simulate upload delay
-  await new Promise(resolve => setTimeout(resolve, 1500))
+  try {
+    // Call API to create story
+    await storiesApi.createStory({
+      photoFile: { path: photoPath.value },
+      caption: caption.value.trim()
+    })
 
-  // Show success toast
-  uni.showToast({
-    title: '发布成功！',
-    icon: 'success',
-    duration: 2000
-  })
+    // Show success toast
+    uni.showToast({
+      title: '发布成功！',
+      icon: 'success',
+      duration: 2000
+    })
 
-  // Navigate back to timeline
-  setTimeout(() => {
-    uni.navigateBack()
-  }, 500)
+    // Navigate back to timeline
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 500)
+  } catch (error) {
+    console.error('Failed to post story:', error)
+    uni.showToast({
+      title: '发布失败，请重试',
+      icon: 'none',
+      duration: 2000
+    })
+  } finally {
+    posting.value = false
+  }
 }
 </script>
 

@@ -2,6 +2,15 @@
 export default {
   onLaunch: function() {
     console.log('App Launch')
+
+    // Initialize WeChat Cloud
+    if (wx.cloud) {
+      wx.cloud.init({
+        env: 'cloud1-6geq4sla3d88052d',
+        traceUser: true
+      })
+      console.log('WeChat Cloud initialized')
+    }
   },
   onShow: function() {
     console.log('App Show')

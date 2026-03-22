@@ -9,7 +9,7 @@
     <view v-else-if="story" class="story-content">
       <!-- Full photo -->
       <image
-        :src="story.photoUrl"
+        :src="displayPhotoUrl"
         mode="widthFix"
         class="full-photo"
         lazy-load
@@ -24,7 +24,7 @@
       <view class="meta-section">
         <view class="meta-divider"></view>
         <view class="author-row">
-          <image :src="story.authorAvatar" class="author-avatar" mode="aspectFill" />
+          <image :src="displayAvatar" class="author-avatar" mode="aspectFill" />
           <text class="author-name">{{ story.authorName }}</text>
         </view>
         <text class="story-date">{{ formattedDate }}</text>
@@ -40,34 +40,92 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { mockStories } from '../../data/mockStories.js'
+import { ref, computed, onMounted, watch } from 'vue'
+import { storiesApi } from '../../api/index.js'
 
 const story = ref(null)
 const loading = ref(true)
+const tempPhotoUrl = ref('')
+const tempAvatarUrl = ref('')
+
+const displayPhotoUrl = computed(() => {
+  if (story.value?.photoUrl?.startsWith('cloud://')) {
+    return tempPhotoUrl.value || story.value.photoUrl
+  }
+  return story.value?.photoUrl || ''
+})
+
+const displayAvatar = computed(() => {
+  if (story.value?.authorAvatar?.startsWith('cloud://')) {
+    return tempAvatarUrl.value || story.value.authorAvatar
+  }
+  return story.value?.authorAvatar || ''
+})
 
 const formattedDate = computed(() => {
   if (!story.value) return ''
   const date = new Date(story.value.createdAt)
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString('zh-CN', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   })
 })
 
-onMounted(() => {
+onMounted(async () => {
   // Get story ID from query params
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
   const storyId = currentPage.options?.id
 
-  // Simulate loading
-  setTimeout(() => {
-    story.value = mockStories.find(s => s.id === storyId) || null
+  if (!storyId) {
     loading.value = false
-  }, 300)
+    return
+  }
+
+  try {
+    story.value = await storiesApi.getStory(storyId)
+
+    // Convert cloud fileIDs to temporary URLs
+    if (story.value) {
+      await convertCloudUrls()
+    }
+  } catch (error) {
+    console.error('Failed to load story:', error)
+    story.value = null
+  } finally {
+    loading.value = false
+  }
 })
+
+async function convertCloudUrls() {
+  const fileIds = []
+
+  if (story.value.photoUrl?.startsWith('cloud://')) {
+    fileIds.push(story.value.photoUrl)
+  }
+  if (story.value.authorAvatar?.startsWith('cloud://')) {
+    fileIds.push(story.value.authorAvatar)
+  }
+
+  if (fileIds.length === 0) return
+
+  try {
+    const { fileList } = await wx.cloud.getTempFileURL({ fileList: fileIds })
+
+    fileList.forEach(file => {
+      if (file.tempFileURL) {
+        if (file.fileID === story.value.photoUrl) {
+          tempPhotoUrl.value = file.tempFileURL
+        } else if (file.fileID === story.value.authorAvatar) {
+          tempAvatarUrl.value = file.tempFileURL
+        }
+      }
+    })
+  } catch (e) {
+    console.error('Failed to get temp URLs:', e)
+  }
+}
 
 function goBack() {
   uni.navigateBack()
