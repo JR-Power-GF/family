@@ -1,0 +1,26 @@
+// Product-specific design tokens
+// Extends uni.scss base variables
+
+// Spacing scale (beyond uni.scss)
+$spacing-xs: 8rpx;
+$spacing-sm: 16rpx;
+$spacing-md: 32rpx;
+$spacing-lg: 48rpx;
+$spacing-xl: 64rpx;
+
+// Card specs
+$card-radius: 24rpx;
+$card-margin-bottom: 32rpx;
+$card-text-padding: 24rpx;
+
+// Month header
+$month-header-height: 96rpx;
+$month-header-font-size: 36rpx;
+
+// Touch targets
+$touch-target-min: 88rpx;
+
+// Animation
+$transition-fast: 150ms;
+$transition-normal: 200ms;
+$toast-duration: 2000ms;
