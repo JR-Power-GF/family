@@ -17,15 +17,15 @@
         </view>
       </view>
 
-      <!-- Add photo button (max 9) -->
+      <!-- Add photo button (max MAX_PHOTOS) -->
       <view
-        v-if="photoPaths.length < 9"
+        v-if="photoPaths.length < MAX_PHOTOS"
         class="photo-add"
         @click="choosePhotoSource"
       >
         <text class="add-icon">+</text>
         <text class="add-text">添加照片</text>
-        <text class="add-count">{{ photoPaths.length }}/9</text>
+        <text class="add-count">{{ photoPaths.length }}/MAX_PHOTOS</text>
       </view>
     </view>
 
@@ -79,6 +79,8 @@ import { ref, computed } from 'vue'
 import { storiesApi } from '../../api/index.js'
 import { getCompressedImage } from '../../utils/image.js'
 
+const MAX_PHOTOS = MAX_PHOTOS
+
 const photoPaths = ref([])
 const caption = ref('')
 const posting = ref(false)
@@ -88,7 +90,7 @@ const uploadedCount = ref(0)
 const canPost = computed(() => photoPaths.value.length > 0 && caption.value.trim())
 
 function choosePhotoSource() {
-  const remaining = 9 - photoPaths.value.length
+  const remaining = MAX_PHOTOS - photoPaths.value.length
 
   uni.showActionSheet({
     itemList: ['从相册选择', '拍照'],
@@ -102,8 +104,8 @@ function choosePhotoSource() {
   })
 }
 
-function chooseFromAlbum(maxCount = 9) {
-  const remaining = Math.min(maxCount, 9 - photoPaths.value.length)
+function chooseFromAlbum(maxCount = MAX_PHOTOS) {
+  const remaining = Math.min(maxCount, MAX_PHOTOS - photoPaths.value.length)
 
   uni.chooseImage({
     count: remaining,
@@ -124,9 +126,9 @@ function chooseFromAlbum(maxCount = 9) {
 }
 
 function takePhoto() {
-  if (photoPaths.value.length >= 9) {
+  if (photoPaths.value.length >= MAX_PHOTOS) {
     uni.showToast({
-      title: '最多只能添加9张照片',
+      title: '最多只能添加MAX_PHOTOS张照片',
       icon: 'none'
     })
     return
@@ -332,7 +334,7 @@ async function postStory() {
 
 .source-btn {
   flex: 1;
-  height: 96rpx;
+  height: MAX_PHOTOS6rpx;
   background-color: #fff;
   border: 2rpx solid $uni-border-color;
   border-radius: 16rpx;

@@ -123,7 +123,6 @@ const refreshing = ref(false)
 
 const displayName = ref('')
 const displayAvatar = ref('')
-const bio = ref('温暖一大家成员')
 const myStories = ref([])
 const currentUserId = ref('')
 const storyThumbUrls = ref({}) // Map of story._id -> temp thumb URL
