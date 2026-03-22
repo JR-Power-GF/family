@@ -67,7 +67,7 @@
         <text class="modal-title">编辑资料</text>
 
         <view class="avatar-edit" @click="chooseAvatar" v-if="showEditModal">
-          <image class="avatar-preview" :src="editAvatar || displayAvatar || '/static/default-avatar.svg'" mode="aspectFill" />
+          <image class="avatar-preview" :src="editAvatarPreview || displayAvatar || '/static/default-avatar.svg'" mode="aspectFill" />
           <text class="avatar-hint">点击更换头像</text>
         </view>
 
@@ -114,7 +114,8 @@ const currentUserId = ref('')
 // Edit profile
 const showEditModal = ref(false)
 const editName = ref('')
-const editAvatar = ref('')
+const editAvatarPreview = ref('') // Temp URL for preview
+const editAvatarFileId = ref('') // Cloud fileID to save
 const savingProfile = ref(false)
 
 onMounted(async () => {
@@ -175,7 +176,8 @@ async function loadProfile() {
 // Open edit modal and pre-fill current values
 function openEditModal() {
   editName.value = displayName.value || ''
-  editAvatar.value = ''
+  editAvatarPreview.value = ''
+  editAvatarFileId.value = ''
   showEditModal.value = true
 }
 
@@ -197,12 +199,15 @@ function chooseAvatar() {
           filePath: tempFilePath
         })
 
-        // Get temp URL for display
+        // Store cloud fileID for saving to database
+        editAvatarFileId.value = fileID
+
+        // Get temp URL for preview display
         const { fileList } = await wx.cloud.getTempFileURL({
           fileList: [fileID]
         })
 
-        editAvatar.value = fileList[0]?.tempFileURL || fileID
+        editAvatarPreview.value = fileList[0]?.tempFileURL || fileID
 
         uni.hideLoading()
       } catch (error) {
@@ -229,6 +234,9 @@ async function saveProfile() {
   savingProfile.value = true
 
   try {
+    // Determine the avatar to save (prefer cloud fileID, fallback to current)
+    const avatarToSave = editAvatarFileId.value || displayAvatar.value
+
     // Update user info in family_members
     await db.collection('family_members')
       .where({
@@ -237,7 +245,7 @@ async function saveProfile() {
       .update({
         data: {
           nickName: editName.value.trim(),
-          avatar: editAvatar.value || displayAvatar.value
+          avatar: avatarToSave
         }
       })
 
@@ -249,18 +257,19 @@ async function saveProfile() {
       .update({
         data: {
           authorName: editName.value.trim(),
-          authorAvatar: editAvatar.value || displayAvatar.value
+          authorAvatar: avatarToSave
         }
       })
 
     displayName.value = editName.value.trim()
-    if (editAvatar.value) {
-      displayAvatar.value = editAvatar.value
+    if (editAvatarPreview.value) {
+      displayAvatar.value = editAvatarPreview.value
     }
 
     showEditModal.value = false
     editName.value = ''
-    editAvatar.value = ''
+    editAvatarPreview.value = ''
+    editAvatarFileId.value = ''
 
     uni.showToast({
       title: '保存成功',
