@@ -110,6 +110,7 @@ const displayAvatar = ref('')
 const bio = ref('温暖一大家成员')
 const myStories = ref([])
 const currentUserId = ref('')
+const storyThumbUrls = ref({}) // Map of story._id -> temp thumb URL
 
 // Handle avatar load error (fall back to default)
 function onAvatarError() {
@@ -170,11 +171,48 @@ async function loadProfile() {
 
     myStories.value = stories
 
+    // Convert cloud:// URLs for story thumbnails
+    await convertStoryThumbUrls(stories)
+
   } catch (error) {
     console.error('Failed to load profile:', error)
     displayName.value = '用户'
   } finally {
     loading.value = false
+  }
+}
+
+// Convert cloud:// URLs to temp URLs for story thumbnails
+async function convertStoryThumbUrls(stories) {
+  const cloudFileIds = []
+
+  // Collect all cloud:// photo URLs
+  stories.forEach(story => {
+    const thumbUrl = story.photoUrls?.[0] || story.photoUrl
+    if (thumbUrl?.startsWith('cloud://')) {
+      cloudFileIds.push({ storyId: story._id, fileID: thumbUrl })
+    }
+  })
+
+  if (cloudFileIds.length === 0) return
+
+  try {
+    const { fileList } = await wx.cloud.getTempFileURL({
+      fileList: cloudFileIds.map(item => item.fileID)
+    })
+
+    // Map storyId -> tempFileURL
+    const urlMap = {}
+    fileList.forEach(file => {
+      const matchingItem = cloudFileIds.find(item => item.fileID === file.fileID)
+      if (matchingItem && file.tempFileURL) {
+        urlMap[matchingItem.storyId] = file.tempFileURL
+      }
+    })
+
+    storyThumbUrls.value = urlMap
+  } catch (e) {
+    console.error('Failed to convert story thumb URLs:', e)
   }
 }
 
@@ -292,11 +330,21 @@ async function saveProfile() {
 }
 
 function getStoryThumb(story) {
-  // Return first photo URL
-  if (story.photoUrls && story.photoUrls.length > 0) {
-    return story.photoUrls[0]
+  // Return converted temp URL if available
+  if (storyThumbUrls.value[story._id]) {
+    return storyThumbUrls.value[story._id]
   }
-  return story.photoUrl || ''
+
+  // Get the original URL
+  const originalUrl = story.photoUrls?.[0] || story.photoUrl || ''
+
+  // If it's a cloud:// URL that hasn't been converted yet, return empty
+  // (prevents broken image from showing)
+  if (originalUrl.startsWith('cloud://')) {
+    return ''
+  }
+
+  return originalUrl
 }
 
 function formatDate(dateStr) {
