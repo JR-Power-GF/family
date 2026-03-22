@@ -1,5 +1,5 @@
 {
-    "name" : "gf_app",
+    "name" : "温暖一大家",
     "appid" : "__UNI__005998E",
     "description" : "",
     "versionName" : "1.0.0",
@@ -54,10 +54,7 @@
         "setting" : {
             "urlCheck" : false
         },
-        "usingComponents" : true,
-        "cloudDevelopment": {
-            "env": "cloud1-6geq4sla3d88052d"
-        }
+        "usingComponents" : true
     },
     "mp-alipay" : {
         "usingComponents" : true

@@ -2,26 +2,49 @@
   <view v-if="!isOnline" class="offline-banner">
     <text class="offline-icon">⚠️</text>
     <text class="offline-text">离线中 — 联网后故事会自动同步</text>
+    <text v-if="queueCount > 0" class="queue-count">({{ queueCount }}条待同步)</text>
   </view>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { getOfflineQueue } from '../utils/offline.js'
 
 const isOnline = ref(true)
+const queueCount = ref(0)
 
 function updateOnlineStatus() {
-  isOnline.value = uni.getNetworkType
-    ? true // In mini-program, assume online for mock
-    : navigator.onLine
+  // Check network status
+  uni.getNetworkType({
+    success: (res) => {
+      isOnline.value = res.networkType !== 'none'
+    },
+    fail: () => {
+      isOnline.value = false
+    }
+  })
+
+  // Update queue count
+  const queue = getOfflineQueue()
+  queueCount.value = queue.length
 }
 
 onMounted(() => {
   updateOnlineStatus()
-  // For real app, would listen to network changes
+
+  // Listen for network changes
+  uni.onNetworkStatusChange?.((res) => {
+    isOnline.value = res.isConnected
+
+    // Refresh queue count when coming online
+    if (res.isConnected) {
+      const queue = getOfflineQueue()
+      queueCount.value = queue.length
+    }
+  })
 })
 
-defineExpose({ isOnline })
+defineExpose({ isOnline, queueCount, updateOnlineStatus })
 </script>
 
 <style lang="scss" scoped>
@@ -39,5 +62,12 @@ defineExpose({ isOnline })
 .offline-text {
   font-size: 26rpx;
   color: #856404;
+}
+
+.queue-count {
+  font-size: 24rpx;
+  color: #856404;
+  margin-left: 8rpx;
+  opacity: 0.8;
 }
 </style>

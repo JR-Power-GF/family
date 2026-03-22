@@ -111,7 +111,7 @@ function handleTap() {
 }
 
 .story-caption {
-  font-size: 32rpx;
+  font-size: 36rpx;
   color: $uni-text-color;
   line-height: 1.5;
   display: -webkit-box;
@@ -128,20 +128,20 @@ function handleTap() {
 }
 
 .author-avatar {
-  width: 48rpx;
-  height: 48rpx;
+  width: 52rpx;
+  height: 52rpx;
   border-radius: 50%;
   margin-right: 12rpx;
   background-color: #f0f0f0;
 }
 
 .author-name {
-  font-size: 24rpx;
+  font-size: 28rpx;
   color: $uni-text-color-grey;
 }
 
 .story-date {
-  font-size: 24rpx;
+  font-size: 28rpx;
   color: $uni-text-color-grey;
 }
 </style>

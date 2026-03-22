@@ -38,6 +38,14 @@
       <text class="char-count">{{ caption.length }}/500</text>
     </view>
 
+    <!-- Upload progress -->
+    <view v-if="uploadProgress > 0 && uploadProgress < 100" class="progress-area">
+      <view class="progress-bar">
+        <view class="progress-fill" :style="{ width: uploadProgress + '%' }"></view>
+      </view>
+      <text class="progress-text">上传中 {{ uploadProgress }}%</text>
+    </view>
+
     <!-- Post button -->
     <view class="button-area">
       <button
@@ -54,10 +62,12 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { storiesApi } from '../../api/index.js'
+import { getCompressedImage } from '../../utils/image.js'
 
 const photoPath = ref('')
 const caption = ref('')
 const posting = ref(false)
+const uploadProgress = ref(0)
 
 const canPost = computed(() => photoPath.value && caption.value.trim())
 
@@ -77,10 +87,18 @@ function choosePhotoSource() {
 function chooseFromAlbum() {
   uni.chooseImage({
     count: 1,
-    sizeType: ['compressed'],
+    sizeType: ['original'],
     sourceType: ['album'],
     success: (res) => {
       photoPath.value = res.tempFilePaths[0]
+    },
+    fail: (err) => {
+      if (err.errMsg?.includes('auth deny')) {
+        uni.showToast({
+          title: '请授权访问相册',
+          icon: 'none'
+        })
+      }
     }
   })
 }
@@ -88,10 +106,18 @@ function chooseFromAlbum() {
 function takePhoto() {
   uni.chooseImage({
     count: 1,
-    sizeType: ['compressed'],
+    sizeType: ['original'],
     sourceType: ['camera'],
     success: (res) => {
       photoPath.value = res.tempFilePaths[0]
+    },
+    fail: (err) => {
+      if (err.errMsg?.includes('auth deny')) {
+        uni.showToast({
+          title: '请授权访问相机',
+          icon: 'none'
+        })
+      }
     }
   })
 }
@@ -100,32 +126,61 @@ async function postStory() {
   if (!canPost.value || posting.value) return
 
   posting.value = true
+  uploadProgress.value = 0
 
   try {
-    // Call API to create story
-    await storiesApi.createStory({
-      photoFile: { path: photoPath.value },
-      caption: caption.value.trim()
+    // Step 1: Compress image
+    uploadProgress.value = 10
+    uni.showLoading({ title: '压缩图片...', mask: true })
+
+    const compressed = await getCompressedImage(photoPath.value, {
+      maxSizeKB: 500,
+      quality: 80
     })
 
-    // Show success toast
+    uni.hideLoading()
+    uploadProgress.value = 30
+
+    // Step 2: Upload to cloud with progress
+    const story = await storiesApi.createStory({
+      photoFile: { path: compressed.path },
+      caption: caption.value.trim()
+    }, (progress) => {
+      // Upload progress callback (30-90%)
+      uploadProgress.value = 30 + Math.floor(progress * 0.6)
+    })
+
+    uploadProgress.value = 100
+
+    // Show success
     uni.showToast({
       title: '发布成功！',
       icon: 'success',
-      duration: 2000
+      duration: 1500
     })
 
-    // Navigate back to timeline
+    // Navigate back
     setTimeout(() => {
       uni.navigateBack()
     }, 500)
+
   } catch (error) {
+    uni.hideLoading()
     console.error('Failed to post story:', error)
+
+    let errorMsg = '发布失败，请重试'
+    if (error.errMsg?.includes('network')) {
+      errorMsg = '网络错误，请检查网络连接'
+    } else if (error.errMsg?.includes('upload')) {
+      errorMsg = '图片上传失败，请重试'
+    }
+
     uni.showToast({
-      title: '发布失败，请重试',
+      title: errorMsg,
       icon: 'none',
-      duration: 2000
+      duration: 2500
     })
+    uploadProgress.value = 0
   } finally {
     posting.value = false
   }
@@ -173,7 +228,7 @@ async function postStory() {
 }
 
 .placeholder-text {
-  font-size: 28rpx;
+  font-size: 32rpx;
   color: $uni-text-color-grey;
 }
 
@@ -185,7 +240,7 @@ async function postStory() {
 
 .source-btn {
   flex: 1;
-  height: 88rpx;
+  height: 96rpx;
   background-color: #fff;
   border: 2rpx solid $uni-border-color;
   border-radius: 16rpx;
@@ -200,11 +255,11 @@ async function postStory() {
 }
 
 .btn-icon {
-  font-size: 36rpx;
+  font-size: 40rpx;
 }
 
 .btn-label {
-  font-size: 28rpx;
+  font-size: 32rpx;
   color: $uni-text-color;
 }
 
@@ -218,7 +273,7 @@ async function postStory() {
 .caption-input {
   width: 100%;
   min-height: 200rpx;
-  font-size: 32rpx;
+  font-size: 36rpx;
   color: $uni-text-color;
   line-height: 1.5;
 }
@@ -229,6 +284,32 @@ async function postStory() {
   text-align: right;
   display: block;
   margin-top: 16rpx;
+}
+
+.progress-area {
+  padding: 24rpx 0;
+}
+
+.progress-bar {
+  height: 8rpx;
+  background-color: #e0e0e0;
+  border-radius: 4rpx;
+  overflow: hidden;
+  margin-bottom: 12rpx;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: $uni-color-primary;
+  border-radius: 4rpx;
+  transition: width 0.2s ease;
+}
+
+.progress-text {
+  font-size: 24rpx;
+  color: $uni-color-primary;
+  text-align: center;
+  display: block;
 }
 
 .button-area {

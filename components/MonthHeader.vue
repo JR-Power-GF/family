@@ -24,7 +24,7 @@ defineProps({
 }
 
 .month-label {
-  font-size: 36rpx;
+  font-size: 40rpx;
   font-weight: 600;
   color: $uni-text-color;
   line-height: 1.4;

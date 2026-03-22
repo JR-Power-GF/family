@@ -39,14 +39,14 @@ const emit = defineEmits(['addStory'])
 }
 
 .empty-title {
-  font-size: 36rpx;
+  font-size: 40rpx;
   font-weight: 500;
   color: $uni-text-color;
   margin-bottom: 16rpx;
 }
 
 .empty-body {
-  font-size: 28rpx;
+  font-size: 32rpx;
   color: #666;
   text-align: center;
   line-height: 1.6;
@@ -56,7 +56,7 @@ const emit = defineEmits(['addStory'])
 .cta-button {
   background-color: $uni-color-primary;
   color: #fff;
-  font-size: 32rpx;
+  font-size: 36rpx;
   font-weight: 500;
   border-radius: 16rpx;
   padding: 24rpx 48rpx;

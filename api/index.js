@@ -40,21 +40,30 @@ export const storiesApi = {
 
   /**
    * Create a new story
+   * @param {Object} options - Story data
+   * @param {Function} onProgress - Progress callback (0-100)
    */
-  async createStory({ photoFile, caption }) {
+  async createStory({ photoFile, caption }, onProgress) {
     // Get current user info
     const { result: userInfo } = await wx.cloud.callFunction({
       name: 'getUserInfo'
     }).catch(() => ({ result: { openid: 'anonymous', nickName: '匿名用户', avatarUrl: '' } }))
 
-    // Upload photo to cloud storage
+    // Upload photo to cloud storage with progress
     const ext = photoFile.path.split('.').pop() || 'jpg'
     const cloudPath = `stories/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
+    onProgress?.(0)
+
     const { fileID } = await wx.cloud.uploadFile({
       cloudPath,
-      filePath: photoFile.path
+      filePath: photoFile.path,
+      onProgressUpdate: (res) => {
+        onProgress?.(res.progress)
+      }
     })
+
+    onProgress?.(100)
 
     // Create story record
     const { _id } = await db.collection('stories').add({

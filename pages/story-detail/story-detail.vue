@@ -15,9 +15,35 @@
         lazy-load
       />
 
-      <!-- Caption -->
+      <!-- Caption (view or edit mode) -->
       <view class="caption-section">
-        <text class="full-caption">{{ story.caption }}</text>
+        <textarea
+          v-if="isEditing"
+          v-model="editCaption"
+          class="edit-textarea"
+          :maxlength="500"
+          auto-height
+          focus
+        />
+        <text v-else class="full-caption">{{ story.caption }}</text>
+      </view>
+
+      <!-- Action buttons -->
+      <view v-if="isOwner && !isEditing" class="action-section">
+        <button class="action-btn edit-btn" @click="startEdit">
+          <text>编辑</text>
+        </button>
+        <button class="action-btn delete-btn" @click="confirmDelete">
+          <text>删除</text>
+        </button>
+      </view>
+
+      <!-- Edit buttons -->
+      <view v-if="isEditing" class="edit-buttons">
+        <button class="edit-action-btn cancel-btn" @click="cancelEdit">取消</button>
+        <button class="edit-action-btn save-btn" :disabled="saving" @click="saveEdit">
+          {{ saving ? '保存中...' : '保存' }}
+        </button>
       </view>
 
       <!-- Meta info -->
@@ -40,13 +66,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { storiesApi } from '../../api/index.js'
 
 const story = ref(null)
 const loading = ref(true)
 const tempPhotoUrl = ref('')
 const tempAvatarUrl = ref('')
+const isOwner = ref(false)
+const isEditing = ref(false)
+const editCaption = ref('')
+const saving = ref(false)
 
 const displayPhotoUrl = computed(() => {
   if (story.value?.photoUrl?.startsWith('cloud://')) {
@@ -73,7 +103,6 @@ const formattedDate = computed(() => {
 })
 
 onMounted(async () => {
-  // Get story ID from query params
   const pages = getCurrentPages()
   const currentPage = pages[pages.length - 1]
   const storyId = currentPage.options?.id
@@ -86,13 +115,18 @@ onMounted(async () => {
   try {
     story.value = await storiesApi.getStory(storyId)
 
-    // Convert cloud fileIDs to temporary URLs
     if (story.value) {
       await convertCloudUrls()
+      // Check if current user is the owner
+      isOwner.value = await storiesApi.isStoryOwner(storyId)
     }
   } catch (error) {
     console.error('Failed to load story:', error)
     story.value = null
+    uni.showToast({
+      title: '加载失败',
+      icon: 'none'
+    })
   } finally {
     loading.value = false
   }
@@ -127,6 +161,83 @@ async function convertCloudUrls() {
   }
 }
 
+function startEdit() {
+  editCaption.value = story.value.caption
+  isEditing.value = true
+}
+
+function cancelEdit() {
+  isEditing.value = false
+  editCaption.value = ''
+}
+
+async function saveEdit() {
+  if (!editCaption.value.trim()) {
+    uni.showToast({
+      title: '内容不能为空',
+      icon: 'none'
+    })
+    return
+  }
+
+  saving.value = true
+
+  try {
+    story.value = await storiesApi.updateStory(story.value.id || story.value._id, {
+      caption: editCaption.value.trim()
+    })
+    isEditing.value = false
+    uni.showToast({
+      title: '修改成功',
+      icon: 'success'
+    })
+  } catch (error) {
+    console.error('Failed to update story:', error)
+    uni.showToast({
+      title: '修改失败',
+      icon: 'none'
+    })
+  } finally {
+    saving.value = false
+  }
+}
+
+function confirmDelete() {
+  uni.showModal({
+    title: '确认删除',
+    content: '删除后无法恢复，确定要删除吗？',
+    confirmColor: '#ff4d4f',
+    success: (res) => {
+      if (res.confirm) {
+        deleteStory()
+      }
+    }
+  })
+}
+
+async function deleteStory() {
+  uni.showLoading({ title: '删除中...', mask: true })
+
+  try {
+    await storiesApi.deleteStory(story.value.id || story.value._id)
+    uni.hideLoading()
+    uni.showToast({
+      title: '删除成功',
+      icon: 'success'
+    })
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 500)
+  } catch (error) {
+    uni.hideLoading()
+    console.error('Failed to delete story:', error)
+    uni.showToast({
+      title: '删除失败',
+      icon: 'none'
+    })
+  }
+}
+
 function goBack() {
   uni.navigateBack()
 }
@@ -156,9 +267,83 @@ function goBack() {
 }
 
 .full-caption {
-  font-size: 34rpx;
+  font-size: 38rpx;
   color: $uni-text-color;
   line-height: 1.6;
+}
+
+.edit-textarea {
+  width: 100%;
+  min-height: 200rpx;
+  font-size: 38rpx;
+  color: $uni-text-color;
+  line-height: 1.6;
+  background-color: #f9f9f9;
+  border-radius: 12rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.action-section {
+  display: flex;
+  gap: 24rpx;
+  padding: 0 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.action-btn {
+  flex: 1;
+  height: 72rpx;
+  font-size: 28rpx;
+  border-radius: 12rpx;
+  border: none;
+
+  &.edit-btn {
+    background-color: #f0f0f0;
+    color: $uni-text-color;
+  }
+
+  &.delete-btn {
+    background-color: #fff1f0;
+    color: #ff4d4f;
+  }
+
+  &:active {
+    opacity: 0.7;
+  }
+}
+
+.edit-buttons {
+  display: flex;
+  gap: 24rpx;
+  padding: 0 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.edit-action-btn {
+  flex: 1;
+  height: 80rpx;
+  font-size: 30rpx;
+  border-radius: 12rpx;
+  border: none;
+
+  &.cancel-btn {
+    background-color: #f0f0f0;
+    color: $uni-text-color-grey;
+  }
+
+  &.save-btn {
+    background-color: $uni-color-primary;
+    color: #fff;
+
+    &[disabled] {
+      opacity: 0.5;
+    }
+  }
+
+  &:active:not([disabled]) {
+    opacity: 0.8;
+  }
 }
 
 .meta-section {
