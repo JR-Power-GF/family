@@ -219,26 +219,23 @@ const displayPhotoUrls = computed(() => {
   if (tempPhotoUrls.value.length > 0) {
     return tempPhotoUrls.value
   }
-  // Otherwise return the original URLs
-  if (story.value?.photoUrls && story.value.photoUrls.length > 0) {
-    return story.value.photoUrls
-  }
-  if (story.value?.photoUrl) {
-    return [story.value.photoUrl]
-  }
+  // Don't return cloud:// URLs directly - they can't be displayed
+  // Return empty array to show loading state
   return []
 })
 
 const displayPhotoUrl = computed(() => {
   if (story.value?.photoUrl?.startsWith('cloud://')) {
-    return tempPhotoUrl.value || story.value.photoUrl
+    // Return temp URL if available, otherwise empty
+    return tempPhotoUrl.value || ''
   }
   return story.value?.photoUrl || ''
 })
 
 const displayAvatar = computed(() => {
   if (story.value?.authorAvatar?.startsWith('cloud://')) {
-    return tempAvatarUrl.value || story.value.authorAvatar
+    // Return temp URL if available, otherwise empty (falls back to default)
+    return tempAvatarUrl.value || ''
   }
   return story.value?.authorAvatar || ''
 })

@@ -61,9 +61,10 @@ const photoCount = computed(() => {
 })
 
 const displayPhotoUrl = computed(() => {
-  // If it's a cloud fileID (starts with cloud://), use temp URL
+  // If it's a cloud fileID (starts with cloud://), wait for temp URL
   if (props.story.photoUrl?.startsWith('cloud://')) {
-    return tempPhotoUrl.value || props.story.photoUrl
+    // Return temp URL if available, otherwise empty (shows placeholder)
+    return tempPhotoUrl.value || ''
   }
   // Otherwise use as-is (mock data or external URL)
   return props.story.photoUrl
@@ -71,7 +72,8 @@ const displayPhotoUrl = computed(() => {
 
 const displayAvatar = computed(() => {
   if (props.story.authorAvatar?.startsWith('cloud://')) {
-    return tempAvatarUrl.value || props.story.authorAvatar
+    // Return temp URL if available, otherwise empty (falls back to default avatar)
+    return tempAvatarUrl.value || ''
   }
   return props.story.authorAvatar
 })
