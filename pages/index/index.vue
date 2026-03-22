@@ -43,11 +43,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { fetchStories, groupByMonth } from '../../data/mockStories.js'
-import MonthHeader from '../../components/MonthHeader.vue'
-import StoryCard from '../../components/StoryCard.vue'
-import EmptyState from '../../components/EmptyState.vue'
-import LoadingSkeleton from '../../components/LoadingSkeleton.vue'
-import OfflineBanner from '../../components/OfflineBanner.vue'
 
 const loading = ref(true)
 const refreshing = ref(false)
