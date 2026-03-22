@@ -50,7 +50,7 @@
 
         <view class="members-list">
           <view v-for="member in members" :key="member._id" class="member-item">
-            <image class="member-avatar" :src="member.avatar || '/static/default-avatar.svg'" mode="aspectFill" />
+            <image class="member-avatar" :src="member.avatar || '/static/default-avatar.svg'" mode="aspectFill" @error="() => member.avatar = ''" />
             <view class="member-info">
               <text class="member-name">{{ member.nickName || '匿名用户' }}</text>
               <text class="member-joined">加入于 {{ formatDate(member.joinedAt) }}</text>

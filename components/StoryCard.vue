@@ -15,7 +15,7 @@
     <view class="story-content" @click="handleTap">
       <text class="story-caption">{{ story.caption }}</text>
       <view class="story-meta">
-        <image class="author-avatar" :src="displayAvatar" mode="aspectFill" />
+        <image class="author-avatar" :src="displayAvatar || '/static/default-avatar.svg'" mode="aspectFill" @error="onAvatarError" />
         <text class="author-name">{{ story.authorName }}</text>
         <text class="story-date"> · {{ formattedDate }}</text>
       </view>
@@ -80,6 +80,11 @@ const formattedDate = computed(() => {
   const date = new Date(props.story.createdAt)
   return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
 })
+
+// Handle avatar load error
+function onAvatarError() {
+  tempAvatarUrl.value = ''
+}
 
 onMounted(async () => {
   // Convert cloud fileIDs to temporary URLs

@@ -17,7 +17,7 @@
       <!-- Header -->
       <view class="profile-header" @click="openEditModal">
         <view class="avatar-wrapper">
-          <image class="profile-avatar" :src="displayAvatar || defaultAvatar" mode="aspectFill" />
+          <image class="profile-avatar" :src="displayAvatar || defaultAvatar" mode="aspectFill" @error="onAvatarError" />
           <view class="avatar-edit-icon">
             <text>+</text>
           </view>
@@ -110,6 +110,11 @@ const displayAvatar = ref('')
 const bio = ref('温暖一大家成员')
 const myStories = ref([])
 const currentUserId = ref('')
+
+// Handle avatar load error (fall back to default)
+function onAvatarError() {
+  displayAvatar.value = ''
+}
 
 // Edit profile
 const showEditModal = ref(false)

@@ -41,6 +41,7 @@
                 class="notification-avatar"
                 :src="notification.actorAvatar || '/static/default-avatar.svg'"
                 mode="aspectFill"
+                @error="() => notification.actorAvatar = ''"
               />
               <view class="notification-content">
                 <view class="notification-header">

@@ -77,7 +77,7 @@
       <!-- Comments list -->
       <view v-if="showCommentsList && comments.length > 0" class="comments-list">
         <view v-for="comment in comments" :key="comment._id" class="comment-item">
-          <image class="comment-avatar" :src="comment.authorAvatar || '/static/default-avatar.svg'" mode="aspectFill" />
+          <image class="comment-avatar" :src="comment.authorAvatar || '/static/default-avatar.svg'" mode="aspectFill" @error="() => comment.authorAvatar = ''" />
           <view class="comment-content">
             <view class="comment-header">
               <text class="comment-author">{{ comment.authorName }}</text>
@@ -153,7 +153,7 @@
       <view class="meta-section">
         <view class="meta-divider"></view>
         <view class="author-row">
-          <image :src="displayAvatar" class="author-avatar" mode="aspectFill" />
+          <image :src="displayAvatar || '/static/default-avatar.svg'" class="author-avatar" mode="aspectFill" @error="onAvatarError" />
           <text class="author-name">{{ story.authorName }}</text>
         </view>
         <text class="story-date">{{ formattedDate }}</text>
@@ -252,6 +252,14 @@ const formattedDate = computed(() => {
     day: 'numeric'
   })
 })
+
+// Handle avatar load error
+function onAvatarError() {
+  tempAvatarUrl.value = ''
+  if (story.value) {
+    story.value.authorAvatar = ''
+  }
+}
 
 // Load story data function
 async function loadStoryData() {
