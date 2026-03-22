@@ -135,19 +135,19 @@ onMounted(async () => {
   await loadUnreadCount()
 })
 
-// Refresh when returning from add-story page
+// Refresh when returning to this page
 onShow(async () => {
-  if (stories.value.length > 0) {
-    await loadStories()
-  }
+  // Always refresh to get latest data (forceRefresh bypasses cache)
+  await loadStories(true)
+  await loadUnreadCount()
 })
 
-async function loadStories() {
+async function loadStories(forceRefresh = false) {
   loading.value = true
   currentSkip = 0
   hasMore.value = true
   try {
-    const result = await storiesApi.getStories({ limit: pageSize, skip: 0 })
+    const result = await storiesApi.getStories({ limit: pageSize, skip: 0, forceRefresh })
     stories.value = result.stories
     monthlyGroups.value = groupByMonth(result.stories)
     hasMore.value = result.hasMore
@@ -166,7 +166,7 @@ async function loadStories() {
 
 async function onRefresh() {
   refreshing.value = true
-  await loadStories()
+  await loadStories(true)
   refreshing.value = false
 }
 

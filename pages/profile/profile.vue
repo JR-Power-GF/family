@@ -326,18 +326,38 @@ async function saveProfile() {
   try {
     // Determine the avatar to save (prefer cloud fileID, fallback to current)
     const avatarToSave = editAvatarFileId.value || displayAvatar.value
+    const newName = editName.value.trim()
 
-    // Update user info in family_members
-    await db.collection('family_members')
+    // First, check if user has a family_members record
+    const { data: existingMembers } = await db.collection('family_members')
       .where({
         userId: currentUserId.value
       })
-      .update({
+      .get()
+
+    if (existingMembers.length > 0) {
+      // Update existing record
+      const memberId = existingMembers[0]._id
+      await db.collection('family_members')
+        .doc(memberId)
+        .update({
+          data: {
+            nickName: newName,
+            avatar: avatarToSave
+          }
+        })
+    } else {
+      // Create new record (user might not have joined a family yet)
+      await db.collection('family_members').add({
         data: {
-          nickName: editName.value.trim(),
-          avatar: avatarToSave
+          userId: currentUserId.value,
+          nickName: newName,
+          avatar: avatarToSave,
+          isAdmin: false,
+          joinedAt: db.serverDate()
         }
       })
+    }
 
     // Update user's stories author info
     await db.collection('stories')
@@ -346,12 +366,12 @@ async function saveProfile() {
       })
       .update({
         data: {
-          authorName: editName.value.trim(),
+          authorName: newName,
           authorAvatar: avatarToSave
         }
       })
 
-    displayName.value = editName.value.trim()
+    displayName.value = newName
     if (editAvatarPreview.value) {
       displayAvatar.value = editAvatarPreview.value
     }
