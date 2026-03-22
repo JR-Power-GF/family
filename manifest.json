@@ -54,7 +54,10 @@
         "setting" : {
             "urlCheck" : false
         },
-        "usingComponents" : true
+        "usingComponents" : true,
+        "cloudDevelopment": {
+            "env": "cloud1-6geq4sla3d88052d"
+        }
     },
     "mp-alipay" : {
         "usingComponents" : true
