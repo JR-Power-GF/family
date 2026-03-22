@@ -125,7 +125,7 @@
             class="mention-item"
             @click="selectMention(member)"
           >
-            <image class="mention-avatar" :src="member.avatar || '/static/default-avatar.svg'" mode="aspectFill" />
+            <image class="mention-avatar" :src="member.avatar || '/static/default-avatar.svg'" mode="aspectFill" @error="() => member.avatar = ''" />
             <text class="mention-name">{{ member.nickName || '匿名用户' }}</text>
           </view>
         </scroll-view>

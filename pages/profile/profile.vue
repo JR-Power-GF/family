@@ -67,7 +67,7 @@
         <text class="modal-title">编辑资料</text>
 
         <view class="avatar-edit" @click="chooseAvatar" v-if="showEditModal">
-          <image class="avatar-preview" :src="editAvatarPreview || displayAvatar || '/static/default-avatar.svg'" mode="aspectFill" />
+          <image class="avatar-preview" :src="editAvatarPreview || displayAvatar || '/static/default-avatar.svg'" mode="aspectFill" @error="onAvatarError" />
           <text class="avatar-hint">点击更换头像</text>
         </view>
 
