@@ -1,4 +1,6 @@
 <script>
+import { cacheManager } from './utils/cache.js'
+
 export default {
   onLaunch: function() {
     console.log('App Launch')
@@ -11,6 +13,9 @@ export default {
       })
       console.log('WeChat Cloud initialized')
     }
+
+    // Clear expired cache entries on startup
+    cacheManager.clearExpired()
   },
   onShow: function() {
     console.log('App Show')

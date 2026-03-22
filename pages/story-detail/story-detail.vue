@@ -77,7 +77,7 @@
       <!-- Comments list -->
       <view v-if="showCommentsList && comments.length > 0" class="comments-list">
         <view v-for="comment in comments" :key="comment._id" class="comment-item">
-          <image class="comment-avatar" :src="comment.authorAvatar || '/static/default-avatar.png'" mode="aspectFill" />
+          <image class="comment-avatar" :src="comment.authorAvatar || '/static/default-avatar.svg'" mode="aspectFill" />
           <view class="comment-content">
             <view class="comment-header">
               <text class="comment-author">{{ comment.authorName }}</text>
@@ -125,7 +125,7 @@
             class="mention-item"
             @click="selectMention(member)"
           >
-            <image class="mention-avatar" :src="member.avatar || '/static/default-avatar.png'" mode="aspectFill" />
+            <image class="mention-avatar" :src="member.avatar || '/static/default-avatar.svg'" mode="aspectFill" />
             <text class="mention-name">{{ member.nickName || '匿名用户' }}</text>
           </view>
         </scroll-view>

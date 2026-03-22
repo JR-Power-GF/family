@@ -25,6 +25,24 @@
 			"style": {
 				"navigationBarTitleText": "故事详情"
 			}
+		},
+		{
+			"path": "pages/profile/profile",
+			"style": {
+				"navigationBarTitleText": "个人主页"
+			}
+		},
+		{
+			"path": "pages/family/family",
+			"style": {
+				"navigationBarTitleText": "家庭成员"
+			}
+		},
+		{
+			"path": "pages/notifications/notifications",
+			"style": {
+				"navigationBarTitleText": "消息通知"
+			}
 		}
 	],
 	"globalStyle": {
