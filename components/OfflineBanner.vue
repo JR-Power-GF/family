@@ -1,7 +1,7 @@
 <template>
   <view v-if="!isOnline" class="offline-banner">
     <text class="offline-icon">⚠️</text>
-    <text class="offline-text">Offline — stories will sync when connected</text>
+    <text class="offline-text">离线中 — 联网后故事会自动同步</text>
   </view>
 </template>
 

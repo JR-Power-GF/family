@@ -9,26 +9,26 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "Home",
+				"navigationBarTitleText": "首页",
 				"navigationBarBackgroundColor": "#F8F8F8"
 			}
 		},
 		{
 			"path": "pages/add-story/add-story",
 			"style": {
-				"navigationBarTitleText": "Add Story"
+				"navigationBarTitleText": "发布故事"
 			}
 		},
 		{
 			"path": "pages/story-detail/story-detail",
 			"style": {
-				"navigationBarTitleText": "Story"
+				"navigationBarTitleText": "故事详情"
 			}
 		}
 	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "Family Stories",
+		"navigationBarTitleText": "家庭故事",
 		"navigationBarBackgroundColor": "#F8F8F8",
 		"backgroundColor": "#F8F8F8"
 	},

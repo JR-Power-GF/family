@@ -10,7 +10,7 @@
       />
       <view v-else class="photo-placeholder">
         <text class="placeholder-icon">📷</text>
-        <text class="placeholder-text">Tap to add photo</text>
+        <text class="placeholder-text">点击添加照片</text>
       </view>
     </view>
 
@@ -18,11 +18,11 @@
     <view class="source-buttons">
       <button class="source-btn" @click="chooseFromAlbum">
         <text class="btn-icon">📷</text>
-        <text class="btn-label">Album</text>
+        <text class="btn-label">相册</text>
       </button>
       <button class="source-btn" @click="takePhoto">
         <text class="btn-icon">📸</text>
-        <text class="btn-label">Camera</text>
+        <text class="btn-label">拍照</text>
       </button>
     </view>
 
@@ -31,7 +31,7 @@
       <textarea
         v-model="caption"
         class="caption-input"
-        placeholder="Write your story..."
+        placeholder="写下你的故事..."
         :maxlength="500"
         auto-height
       />
@@ -45,7 +45,7 @@
         :disabled="!canPost || posting"
         @click="postStory"
       >
-        {{ posting ? 'Posting...' : 'Post' }}
+        {{ posting ? '发布中...' : '发布' }}
       </button>
     </view>
   </view>
@@ -105,7 +105,7 @@ async function postStory() {
 
   // Show success toast
   uni.showToast({
-    title: 'Posted!',
+    title: '发布成功！',
     icon: 'success',
     duration: 2000
   })

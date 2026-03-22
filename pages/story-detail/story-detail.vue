@@ -2,7 +2,7 @@
   <view class="detail-page">
     <!-- Loading -->
     <view v-if="loading" class="loading-area">
-      <text>Loading...</text>
+      <text>加载中...</text>
     </view>
 
     <!-- Story content -->
@@ -33,8 +33,8 @@
 
     <!-- Not found -->
     <view v-else class="not-found">
-      <text>Story not found</text>
-      <button class="back-btn" @click="goBack">Go Back</button>
+      <text>故事不存在</text>
+      <button class="back-btn" @click="goBack">返回</button>
     </view>
   </view>
 </template>

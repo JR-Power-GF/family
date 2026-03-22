@@ -3,10 +3,10 @@
     <view class="empty-icon">
       <text class="icon">📷</text>
     </view>
-    <text class="empty-title">No stories yet</text>
-    <text class="empty-body">Be the first to share a family memory!</text>
+    <text class="empty-title">还没有故事</text>
+    <text class="empty-body">成为第一个分享家庭回忆的人吧！</text>
     <button class="cta-button" @click="emit('addStory')">
-      Add first story
+      发布第一条故事
     </button>
   </view>
 </template>
