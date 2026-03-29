@@ -1,8 +1,9 @@
 <template>
-  <view v-if="!isOnline" class="offline-banner">
+  <view v-if="!isOnline" class="offline-banner" @click="handleTap">
     <text class="offline-icon">⚠️</text>
     <text class="offline-text">离线中 — 联网后故事会自动同步</text>
     <text v-if="queueCount > 0" class="queue-count">({{ queueCount }}条待同步)</text>
+    <text v-if="queueCount > 0" class="tap-hint">点击查看</text>
   </view>
 </template>
 
@@ -10,8 +11,14 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { getOfflineQueue } from '../utils/offline.js'
 
+const emit = defineEmits(['tap'])
+
 const isOnline = ref(true)
 const queueCount = ref(0)
+
+function handleTap() {
+  emit('tap', { queueCount: queueCount.value })
+}
 
 function updateOnlineStatus() {
   // Check network status
@@ -53,6 +60,10 @@ defineExpose({ isOnline, queueCount, updateOnlineStatus })
   padding: 20rpx 32rpx;
   display: flex;
   align-items: center;
+
+  &:active {
+    background-color: #ffe69c;
+  }
 }
 
 .offline-icon {
@@ -68,6 +79,13 @@ defineExpose({ isOnline, queueCount, updateOnlineStatus })
   font-size: 24rpx;
   color: #856404;
   margin-left: 8rpx;
+  opacity: 0.8;
+}
+
+.tap-hint {
+  margin-left: auto;
+  font-size: 24rpx;
+  color: #856404;
   opacity: 0.8;
 }
 </style>
