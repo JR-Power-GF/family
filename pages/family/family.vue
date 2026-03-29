@@ -145,7 +145,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useShareAppMessage, onLoad } from '@dcloudio/uni-app'
+import { onLoad } from '@dcloudio/uni-app'
 
 // Lazy database initialization
 let db = null
@@ -168,15 +168,6 @@ const showJoinModal = ref(false)
 const inputCode = ref('')
 const joining = ref(false)
 
-// Share handler for WeChat
-useShareAppMessage(() => {
-  return {
-    title: '邀请你加入我的家庭',
-    path: `/pages/family/family?inviteCode=${inviteCode.value}`,
-    imageUrl: '/static/logo.png'
-  }
-})
-
 onMounted(async () => {
   await loadFamilyData()
 })
@@ -188,6 +179,19 @@ onLoad((options) => {
     inputCode.value = options.inviteCode.toUpperCase()
     showJoinModal.value = true
   }
+})
+
+// Share handler - using defineExpose for uni-app
+const onShareAppMessage = () => {
+  return {
+    title: '邀请你加入我的家庭',
+    path: `/pages/family/family?inviteCode=${inviteCode.value}`,
+    imageUrl: '/static/logo.png'
+  }
+}
+
+defineExpose({
+  onShareAppMessage
 })
 
 async function loadFamilyData() {
