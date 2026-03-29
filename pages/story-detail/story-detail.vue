@@ -328,20 +328,20 @@ async function loadStoryData() {
 // Load pending story from local storage
 function loadPendingStory(id) {
   const pendingStories = getPendingStories()
-  const story = pendingStories.find(s => s._id === id)
-  if (!story) {
+  const pendingStory = pendingStories.find(s => s._id === id)
+  if (!pendingStory) {
     uni.showToast({ title: '故事未找到', icon: 'none' })
     setTimeout(() => uni.navigateBack(), 1500)
     return
   }
 
   story.value = {
-    ...story,
+    ...pendingStory,
     // Convert local file paths for display
-    photoUrls: story.photoUrls || (story.photoUrl ? [story.photoUrl] : [])
+    photoUrls: pendingStory.photoUrls || (pendingStory.photoUrl ? [pendingStory.photoUrl] : [])
   }
   // Set photo URLs for display
-  tempPhotoUrls.value = story.photoUrls || (story.photoUrl ? [story.photoUrl] : [])
+  tempPhotoUrls.value = pendingStory.photoUrls || (pendingStory.photoUrl ? [pendingStory.photoUrl] : [])
   loading.value = false
 }
 
