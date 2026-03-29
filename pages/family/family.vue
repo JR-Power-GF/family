@@ -12,7 +12,20 @@
 
     <!-- Content -->
     <view v-else>
-      <!-- Header with gradient -->
+      <!-- Connection Error State -->
+      <view v-if="connectionError" class="error-state">
+        <text class="error-icon">⚠️</text>
+        <text class="error-title">无法连接到服务器</text>
+        <text class="error-desc">请检查：</text>
+        <text class="error-tip">1. 是否在微信开发者工具中</text>
+        <text class="error-tip">2. 云开发是否已开通</text>
+        <text class="error-tip">3. 云函数 getUserInfo 是否已部署</text>
+        <button class="retry-btn" @click="loadFamilyData">重新加载</button>
+      </view>
+
+      <!-- Normal Content -->
+      <view v-else>
+        <!-- Header with gradient -->
       <view class="header-section">
         <view class="header-bg"></view>
         <view class="header-content">
@@ -91,6 +104,7 @@
         </view>
       </view>
     </view>
+    </view>
   </view>
 </template>
 
@@ -107,6 +121,7 @@ function getDb() {
 }
 
 const loading = ref(true)
+const connectionError = ref(false)
 const inviteCode = ref('')
 const members = ref([])
 const isAdmin = ref(false)
@@ -132,18 +147,19 @@ defineExpose({
 
 async function loadFamilyData() {
   loading.value = true
+  connectionError.value = false
 
   try {
     // Get current user's openid
     const { result: userInfo } = await wx.cloud.callFunction({
       name: 'getUserInfo'
-    }).catch(() => ({ result: { openid: null, nickName: '匿名用户', avatarUrl: '' } }))
+    }).catch((e) => {
+      console.error('Cloud function error:', e)
+      return { result: { openid: null, nickName: '匿名用户', avatarUrl: '' } }
+    })
 
-    if (!userInfo.openid) {
-      uni.showToast({
-        title: '请先登录',
-        icon: 'none'
-      })
+    if (!userInfo || !userInfo.openid) {
+      connectionError.value = true
       loading.value = false
       return
     }
@@ -694,6 +710,53 @@ function formatDate(dateStr) {
 .empty-tip {
   font-size: 26rpx;
   color: #999;
+}
+
+/* Error State */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 40rpx;
+  margin: 0 32rpx;
+  background: #fff;
+  border-radius: 24rpx;
+}
+
+.error-icon {
+  font-size: 80rpx;
+  margin-bottom: 24rpx;
+}
+
+.error-title {
+  font-size: 36rpx;
+  color: #333;
+  font-weight: 600;
+  margin-bottom: 24rpx;
+}
+
+.error-desc {
+  font-size: 28rpx;
+  color: #666;
+  margin-bottom: 16rpx;
+}
+
+.error-tip {
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 8rpx;
+  align-self: flex-start;
+  margin-left: 60rpx;
+}
+
+.retry-btn {
+  margin-top: 32rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 28rpx;
+  padding: 20rpx 60rpx;
+  border-radius: 40rpx;
+  border: none;
 }
 
 /* Loading skeleton styles */
