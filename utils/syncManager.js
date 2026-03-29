@@ -9,6 +9,31 @@ import {
 import { getCompressedImage } from './image.js'
 import { storiesApi } from '../api/index.js'
 
+const fs = wx.getFileSystemManager?.()
+
+/**
+ * Clean up local temp photo files after successful sync
+ * @param {Array} photoFiles - Array of { path: string }
+ */
+function cleanupLocalPhotos(photoFiles) {
+  if (!fs || !photoFiles) return
+
+  for (const photo of photoFiles) {
+    if (photo.path && photo.path.startsWith('http') === false) {
+      try {
+        // Only clean up temp/compressed files, not original album photos
+        if (photo.path.includes('_compressed') || photo.path.includes('wxfile://')) {
+          fs.unlinkSync(photo.path)
+          console.log(`[SyncManager] Cleaned up temp file: ${photo.path}`)
+        }
+      } catch (e) {
+        // Ignore cleanup errors - temp files will be cleaned by OS eventually
+        console.log(`[SyncManager] Could not clean up ${photo.path}:`, e.message)
+      }
+    }
+  }
+}
+
 /**
  * Upload photos from queue item to cloud storage
  * @param {Array} photoFiles - Array of { path: string }
@@ -150,6 +175,9 @@ export const syncManager = {
       })
 
       removeFromQueue(item.id)
+
+      // Clean up local temp photos
+      cleanupLocalPhotos(item.photoFiles)
 
       if (timelineUpdateCallback) {
         timelineUpdateCallback(item.id, {
