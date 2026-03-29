@@ -78,6 +78,7 @@
 import { ref, computed } from 'vue'
 import { storiesApi } from '../../api/index.js'
 import { getCompressedImage } from '../../utils/image.js'
+import { isOnline, saveStoryToQueue, getPendingStories } from '../../utils/offline.js'
 
 const MAX_PHOTOS = 9  // 3×3 grid, common pattern for photo pickers
 
@@ -164,48 +165,17 @@ async function postStory() {
   uploadedCount.value = 0
 
   try {
-    const totalPhotos = photoPaths.value.length
+    // Check if online
+    const online = await isOnline()
 
-    // Compress all photos first
-    const compressedPhotos = []
-    for (let i = 0; i < totalPhotos; i++) {
-      uploadProgress.value = Math.floor((i / totalPhotos) * 20)
-      uni.showLoading({ title: `压缩图片 ${i + 1}/${totalPhotos}...`, mask: true })
-
-      const compressed = await getCompressedImage(photoPaths.value[i], {
-        maxSizeKB: 500,
-        quality: 80
-      })
-      compressedPhotos.push({ path: compressed.path })
+    if (!online) {
+      // OFFLINE: Save to queue
+      await postOffline()
+      return
     }
-    uni.hideLoading()
 
-    // Upload all photos and create story
-    uploadProgress.value = 20
-
-    await storiesApi.createStory({
-      photoFiles: compressedPhotos,
-      caption: caption.value.trim()
-    }, (progress) => {
-      // Upload progress (20-100%)
-      uploadProgress.value = 20 + Math.floor(progress * 0.8)
-      uploadedCount.value = Math.ceil((progress / 100) * totalPhotos)
-    })
-
-    uploadProgress.value = 100
-    uploadedCount.value = totalPhotos
-
-    // Show success
-    uni.showToast({
-      title: '发布成功！',
-      icon: 'success',
-      duration: 1500
-    })
-
-    // Navigate back
-    setTimeout(() => {
-      uni.navigateBack()
-    }, 500)
+    // ONLINE: Normal upload flow
+    await postOnline()
 
   } catch (error) {
     uni.hideLoading()
@@ -227,6 +197,101 @@ async function postStory() {
   } finally {
     posting.value = false
   }
+}
+
+// Online posting flow (existing logic extracted)
+async function postOnline() {
+  const totalPhotos = photoPaths.value.length
+
+  // Compress all photos first
+  const compressedPhotos = []
+  for (let i = 0; i < totalPhotos; i++) {
+    uploadProgress.value = Math.floor((i / totalPhotos) * 20)
+    uni.showLoading({ title: `压缩图片 ${i + 1}/${totalPhotos}...`, mask: true })
+
+    const compressed = await getCompressedImage(photoPaths.value[i], {
+      maxSizeKB: 500,
+      quality: 80
+    })
+    compressedPhotos.push({ path: compressed.path })
+  }
+  uni.hideLoading()
+
+  // Upload all photos and create story
+  uploadProgress.value = 20
+
+  await storiesApi.createStory({
+    photoFiles: compressedPhotos,
+    caption: caption.value.trim()
+  }, (progress) => {
+    // Upload progress (20-100%)
+    uploadProgress.value = 20 + Math.floor(progress * 0.8)
+    uploadedCount.value = Math.ceil((progress / 100) * totalPhotos)
+  })
+
+  uploadProgress.value = 100
+  uploadedCount.value = totalPhotos
+
+  // Show success
+  uni.showToast({
+    title: '发布成功！',
+    icon: 'success',
+    duration: 1500
+  })
+
+  // Navigate back
+  setTimeout(() => {
+    uni.navigateBack()
+  }, 500)
+}
+
+// Offline posting flow
+async function postOffline() {
+  // Get user info for story metadata
+  const { result: userInfo } = await wx.cloud.callFunction({
+    name: 'getUserInfo'
+  }).catch(() => ({
+    result: {
+      openid: 'anonymous',
+      nickName: '匿名用户',
+      avatarUrl: ''
+    }
+  }))
+
+  // Compress photos for local storage
+  const compressedPhotos = []
+  for (let i = 0; i < photoPaths.value.length; i++) {
+    const compressed = await getCompressedImage(photoPaths.value[i], {
+      maxSizeKB: 500,
+      quality: 80
+    })
+    compressedPhotos.push({ path: compressed.path })
+  }
+
+  // Save to offline queue
+  const localId = saveStoryToQueue({
+    photoFiles: compressedPhotos,
+    caption: caption.value.trim(),
+    authorId: userInfo.openid,
+    authorName: userInfo.nickName || '匿名用户',
+    authorAvatar: userInfo.avatarUrl || ''
+  })
+
+  if (!localId) {
+    throw new Error('Failed to save to offline queue')
+  }
+
+  // Show success toast
+  uni.showToast({
+    title: '已保存，联网后自动同步',
+    icon: 'none',
+    duration: 2000
+  })
+
+  // Navigate back (index page will show pending story)
+  setTimeout(() => {
+    uni.navigateBack()
+  }, 500)
 }
 </script>
 
