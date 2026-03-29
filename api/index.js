@@ -3,8 +3,37 @@
 
 import { cacheManager, CacheKeys, CacheTTL } from '../utils/cache.js'
 
-const db = wx.cloud.database()
-const _ = db.command
+// Lazy initialization of database - only when needed
+let _db = null
+let _command = null
+
+function getDb() {
+  if (!_db) {
+    _db = wx.cloud.database()
+    _command = _db.command
+  }
+  return _db
+}
+
+function getCommand() {
+  if (!_command) {
+    getDb()
+  }
+  return _command
+}
+
+// For convenience, export getters
+const db = new Proxy({}, {
+  get(target, prop) {
+    return getDb()[prop]
+  }
+})
+
+const _ = new Proxy({}, {
+  get(target, prop) {
+    return getCommand()[prop]
+  }
+})
 
 /**
  * Helper to create notification
