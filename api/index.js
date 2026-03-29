@@ -33,6 +33,64 @@ async function createNotification({ type, targetId, actorId, actorName, actorAva
 }
 
 /**
+ * Extract @mentions from content
+ * @param {string} content - Comment content
+ * @returns {Array<{name: string, id: string}>} Array of mentioned users
+ */
+function extractMentions(content) {
+  if (!content) return []
+
+  // Match @username patterns (Chinese, English, numbers, underscores)
+  const mentionRegex = /@([\w\u4e00-\u9fa5]+)/g
+  const mentions = []
+  let match
+
+  while ((match = mentionRegex.exec(content)) !== null) {
+    const name = match[1]
+    // Avoid duplicates
+    if (!mentions.find(m => m.name === name)) {
+      mentions.push({ name })
+    }
+  }
+
+  return mentions
+}
+
+/**
+ * Create mention notifications for mentioned users
+ */
+async function createMentionNotifications({ content, storyId, actorId, actorName, actorAvatar }) {
+  const mentions = extractMentions(content)
+  if (mentions.length === 0) return
+
+  try {
+    // Get all family members to resolve names to IDs
+    const { data: members } = await db.collection('family_members').get()
+
+    for (const mention of mentions) {
+      // Find member by nickname (partial match for flexibility)
+      const member = members.find(m =>
+        m.nickName && m.nickName.includes(mention.name)
+      )
+
+      if (member && member._id !== actorId) {
+        await createNotification({
+          type: 'mention',
+          targetId: member._id,
+          actorId,
+          actorName,
+          actorAvatar,
+          storyId,
+          preview: content.slice(0, 50)
+        })
+      }
+    }
+  } catch (e) {
+    console.error('Failed to create mention notifications:', e)
+  }
+}
+
+/**
  * Stories API
  */
 export const storiesApi = {
@@ -421,6 +479,15 @@ export const storiesApi = {
       preview: content.slice(0, 50)
     })
 
+    // Create mention notifications for @mentioned users
+    await createMentionNotifications({
+      content,
+      storyId,
+      actorId: userInfo.openid,
+      actorName: userInfo.nickName || '匿名用户',
+      actorAvatar: userInfo.avatarUrl || ''
+    })
+
     // Invalidate comments cache
     cacheManager.delete(CacheKeys.COMMENTS(storyId))
 
@@ -464,6 +531,15 @@ export const storiesApi = {
       actorAvatar: userInfo.avatarUrl || '',
       storyId: parentComment.data.storyId,
       preview: content.slice(0, 50)
+    })
+
+    // Create mention notifications for @mentioned users
+    await createMentionNotifications({
+      content,
+      storyId: parentComment.data.storyId,
+      actorId: userInfo.openid,
+      actorName: userInfo.nickName || '匿名用户',
+      actorAvatar: userInfo.avatarUrl || ''
     })
 
     // Invalidate comments cache for this story
