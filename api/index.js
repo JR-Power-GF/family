@@ -242,6 +242,20 @@ export const storiesApi = {
   async createStoryFromQueue({ photoUrls, caption, authorId, authorName, authorAvatar, queuedAt }) {
     const db = wx.cloud.database()
 
+    // Check for duplicate by queuedAt timestamp (prevent double-posting)
+    const { data: existing } = await db.collection('stories')
+      .where({
+        authorId,
+        createdAt: new Date(queuedAt)
+      })
+      .get()
+
+    if (existing.length > 0) {
+      console.log('Story already synced, returning existing:', existing[0]._id)
+      cacheManager.delete(CacheKeys.STORIES)
+      return await this.getStory(existing[0]._id, true)
+    }
+
     const { _id } = await db.collection('stories').add({
       data: {
         photoUrls,
