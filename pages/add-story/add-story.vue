@@ -25,7 +25,7 @@
       >
         <text class="add-icon">+</text>
         <text class="add-text">添加照片</text>
-        <text class="add-count">{{ photoPaths.length }}/MAX_PHOTOS</text>
+        <text class="add-count">{{ photoPaths.length }}/{{ MAX_PHOTOS }}</text>
       </view>
     </view>
 
@@ -79,7 +79,7 @@ import { ref, computed } from 'vue'
 import { storiesApi } from '../../api/index.js'
 import { getCompressedImage } from '../../utils/image.js'
 
-const MAX_PHOTOS = MAX_PHOTOS
+const MAX_PHOTOS = 9  // 3×3 grid, common pattern for photo pickers
 
 const photoPaths = ref([])
 const caption = ref('')
@@ -128,7 +128,7 @@ function chooseFromAlbum(maxCount = MAX_PHOTOS) {
 function takePhoto() {
   if (photoPaths.value.length >= MAX_PHOTOS) {
     uni.showToast({
-      title: '最多只能添加MAX_PHOTOS张照片',
+      title: `最多只能添加${MAX_PHOTOS}张照片`,
       icon: 'none'
     })
     return
@@ -334,7 +334,7 @@ async function postStory() {
 
 .source-btn {
   flex: 1;
-  height: MAX_PHOTOS6rpx;
+  height: 86rpx;
   background-color: #fff;
   border: 2rpx solid $uni-border-color;
   border-radius: 16rpx;
