@@ -21,7 +21,7 @@
       </view>
     </view>
 
-    <OfflineBanner />
+    <OfflineBanner @tap="handlePendingModalTap" />
 
     <!-- Loading state -->
     <LoadingSkeleton v-if="loading" :count="3" />
@@ -59,8 +59,10 @@
             v-for="(story, index) in group.stories"
             :key="story._id"
             :story="story"
+            :sync-status="story.syncStatus || null"
             @tap="goToDetail"
             @image-tap="openImageViewer"
+            @retry-sync="handleRetrySync"
             :data-index="index"
           />
         </template>
@@ -89,6 +91,14 @@
       :current="viewerIndex"
       @close="closeImageViewer"
     />
+
+    <!-- Pending List Modal -->
+    <PendingListModal
+      v-model:visible="showPendingModal"
+      @close="handlePendingModalClose"
+      @retry="handleRetrySync"
+      @cancel="handleCancelSync"
+    />
   </view>
 </template>
 
@@ -96,6 +106,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { storiesApi, groupByMonth } from '../../api/index.js'
+import { getPendingStories } from '../../utils/offline.js'
+import { syncManager, setTimelineUpdateCallback } from '../../utils/syncManager.js'
+import PendingListModal from '../../components/PendingListModal.vue'
 
 const loading = ref(true)
 const refreshing = ref(false)
@@ -112,6 +125,9 @@ let currentSkip = 0
 const showImageViewer = ref(false)
 const viewerIndex = ref(0)
 const viewerImages = ref([])
+
+// Pending modal state
+const showPendingModal = ref(false)
 
 // Create a flat list of all image URLs
 const allImageUrls = computed(() => {
@@ -131,6 +147,23 @@ onMounted(async () => {
   const systemInfo = uni.getSystemInfoSync()
   navBarHeight.value = (systemInfo.statusBarHeight || 44) + 44
 
+  // Set up callback for sync manager to update timeline
+  setTimelineUpdateCallback((localId, updates) => {
+    if (updates.replaceWithReal && updates.realStory) {
+      // Replace local pending story with real one
+      stories.value = stories.value.map(s =>
+        s._id === localId ? updates.realStory : s
+      )
+      monthlyGroups.value = groupByMonth(stories.value)
+    } else {
+      // Update pending story status
+      stories.value = stories.value.map(s =>
+        s._id === localId ? { ...s, ...updates } : s
+      )
+      monthlyGroups.value = groupByMonth(stories.value)
+    }
+  })
+
   await loadStories()
   await loadUnreadCount()
 })
@@ -146,12 +179,29 @@ async function loadStories(forceRefresh = false) {
   loading.value = true
   currentSkip = 0
   hasMore.value = true
+
   try {
+    // 1. Get pending stories from queue
+    const pendingStories = getPendingStories()
+
+    // 2. Get server stories
     const result = await storiesApi.getStories({ limit: pageSize, skip: 0, forceRefresh })
     stories.value = result.stories
-    monthlyGroups.value = groupByMonth(result.stories)
     hasMore.value = result.hasMore
     currentSkip = result.stories.length
+
+    // 3. Merge: pending first, then server stories (exclude local IDs)
+    const serverStoryIds = new Set(result.stories.map(s => s._id))
+    const combinedStories = [
+      ...pendingStories.filter(s => !serverStoryIds.has(s._id)),
+      ...result.stories
+    ]
+
+    monthlyGroups.value = groupByMonth(combinedStories)
+
+    // 4. Trigger background sync
+    syncManager.syncAll()
+
   } catch (error) {
     console.error('Failed to load stories:', error)
     uni.showToast({
@@ -285,6 +335,27 @@ async function openImageViewer(event) {
 
 function closeImageViewer() {
   showImageViewer.value = false
+}
+
+// Pending modal handlers
+function handlePendingModalTap() {
+  showPendingModal.value = true
+}
+
+function handlePendingModalClose() {
+  showPendingModal.value = false
+  // Reload to refresh pending status
+  loadStories(true)
+}
+
+function handleRetrySync(story) {
+  // The modal handles retry, just refresh after
+  loadStories(true)
+}
+
+function handleCancelSync(story) {
+  // The modal handles cancel, just refresh after
+  loadStories(true)
 }
 </script>
 
