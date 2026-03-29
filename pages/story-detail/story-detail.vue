@@ -41,6 +41,11 @@
         @longpress="saveImage(displayPhotoUrls[0])"
       />
 
+      <!-- Sync status notice for pending stories -->
+      <view v-if="isPendingStory && syncStatusText" class="sync-notice">
+        <text class="sync-notice-text">{{ syncStatusText }}</text>
+      </view>
+
       <!-- Caption (view or edit mode) -->
       <view class="caption-section">
         <textarea
@@ -132,7 +137,7 @@
       </view>
 
       <!-- Action buttons -->
-      <view v-if="isOwner && !isEditing" class="action-section">
+      <view v-if="isOwner && !isEditing && !isPendingStory" class="action-section">
         <button class="action-btn edit-btn" @click="startEdit">
           <text>编辑</text>
         </button>
@@ -183,6 +188,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { onShareAppMessage, onShareTimeline, onLoad } from '@dcloudio/uni-app'
 import { storiesApi } from '../../api/index.js'
+import { getPendingStories } from '@/utils/offline.js'
 
 const story = ref(null)
 const loading = ref(true)
@@ -250,6 +256,24 @@ const formattedDate = computed(() => {
   })
 })
 
+// Computed properties for pending story status
+const isPendingStory = computed(() => {
+  return story.value?.isPending === true
+})
+
+const syncStatusText = computed(() => {
+  if (!story.value?.syncStatus) return ''
+  switch (story.value.syncStatus) {
+    case 'pending':
+    case 'syncing':
+      return '故事正在同步中...'
+    case 'failed':
+      return '同步失败，请返回首页重试'
+    default:
+      return ''
+  }
+})
+
 // Handle avatar load error
 function onAvatarError() {
   tempAvatarUrl.value = ''
@@ -262,6 +286,12 @@ function onAvatarError() {
 async function loadStoryData() {
   if (!storyId.value) {
     loading.value = false
+    return
+  }
+
+  // Check if this is a pending (offline) story
+  if (storyId.value.startsWith('local_')) {
+    loadPendingStory(storyId.value)
     return
   }
 
@@ -293,6 +323,26 @@ async function loadStoryData() {
   } finally {
     loading.value = false
   }
+}
+
+// Load pending story from local storage
+function loadPendingStory(id) {
+  const pendingStories = getPendingStories()
+  const story = pendingStories.find(s => s._id === id)
+  if (!story) {
+    uni.showToast({ title: '故事未找到', icon: 'none' })
+    setTimeout(() => uni.navigateBack(), 1500)
+    return
+  }
+
+  story.value = {
+    ...story,
+    // Convert local file paths for display
+    photoUrls: story.photoUrls || (story.photoUrl ? [story.photoUrl] : [])
+  }
+  // Set photo URLs for display
+  tempPhotoUrls.value = story.photoUrls || (story.photoUrl ? [story.photoUrl] : [])
+  loading.value = false
 }
 
 // Use onLoad to get URL parameters (reliable in uni-app)
@@ -1338,5 +1388,17 @@ function saveShareImage(tempFilePath) {
   top: -9999rpx;
   width: 750px;
   height: 1500px;
+}
+
+.sync-notice {
+  background: #fff3cd;
+  padding: 12rpx 24rpx;
+  margin: 20rpx 32rpx;
+  border-radius: 8rpx;
+}
+
+.sync-notice-text {
+  color: #856404;
+  font-size: 28rpx;
 }
 </style>
