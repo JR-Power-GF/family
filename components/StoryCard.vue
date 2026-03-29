@@ -11,6 +11,15 @@
       <view v-if="photoCount > 1" class="photo-count-badge">
         <text>{{ photoCount }}</text>
       </view>
+      <!-- Sync status badge overlay -->
+      <view
+        v-if="syncStatus"
+        class="sync-badge"
+        :class="syncStatus"
+        @click.stop="handleSyncBadgeTap"
+      >
+        <text>{{ syncStatusText }}</text>
+      </view>
     </view>
     <view class="story-content" @click="handleTap">
       <text class="story-caption">{{ story.caption }}</text>
@@ -42,10 +51,15 @@ const props = defineProps({
   story: {
     type: Object,
     required: true
+  },
+  syncStatus: {
+    type: String,
+    default: null,
+    validator: (val) => [null, 'pending', 'syncing', 'failed', 'success'].includes(val)
   }
 })
 
-const emit = defineEmits(['tap', 'imageTap'])
+const emit = defineEmits(['tap', 'imageTap', 'retrySync'])
 
 // Temporary URL for cloud file (fileID -> temp URL)
 const tempPhotoUrl = ref('')
@@ -82,6 +96,20 @@ const formattedDate = computed(() => {
   const date = new Date(props.story.createdAt)
   return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
 })
+
+// Sync status display
+const syncStatusText = computed(() => {
+  switch (props.syncStatus) {
+    case 'pending': return '⏳ 等待同步'
+    case 'syncing': return '⟳ 同步中...'
+    case 'failed': return '⚠️ 点击重试'
+    case 'success': return '✓ 已同步'
+    default: return null
+  }
+})
+
+const isSyncing = computed(() => props.syncStatus === 'syncing')
+const canRetry = computed(() => props.syncStatus === 'failed')
 
 // Handle avatar load error
 function onAvatarError() {
@@ -153,6 +181,12 @@ async function handleLikeTap() {
       title: '操作失败',
       icon: 'none'
     })
+  }
+}
+
+function handleSyncBadgeTap() {
+  if (canRetry.value) {
+    emit('retrySync', props.story)
   }
 }
 </script>
@@ -259,5 +293,50 @@ async function handleLikeTap() {
 .action-count {
   font-size: 24rpx;
   color: $uni-text-color-grey;
+}
+
+.sync-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  text {
+    color: #fff;
+    font-size: 28rpx;
+    padding: 16rpx 32rpx;
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 24rpx;
+  }
+
+  &.syncing {
+    animation: pulse 1.5s infinite;
+  }
+
+  &.failed {
+    cursor: pointer;
+
+    &:active {
+      opacity: 0.8;
+    }
+  }
+
+  &.success {
+    background-color: rgba(76, 217, 100, 0.3);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 </style>
