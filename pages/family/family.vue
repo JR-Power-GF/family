@@ -299,6 +299,13 @@ async function joinFamily() {
       }
     })
 
+    // Notify all admins of the family about new member
+    await notifyAdminsOfNewMember({
+      familyId: targetFamily._id,
+      newMemberName: userInfo.nickName || '匿名用户',
+      newMemberId: currentUserId.value
+    })
+
     showJoinModal.value = false
     inputCode.value = ''
 
@@ -519,6 +526,45 @@ function copyInviteCode() {
       })
     }
   })
+}
+
+/**
+ * Notify all admins when a new member joins the family
+ */
+async function notifyAdminsOfNewMember({ familyId, newMemberName, newMemberId }) {
+  try {
+    // Get all admins of this family
+    const { data: admins } = await getDb().collection('family_members')
+      .where({
+        familyId,
+        isAdmin: true
+      })
+      .get()
+
+    // Create notification for each admin (except if the new member is an admin)
+    for (const admin of admins) {
+      if (admin.userId === newMemberId) continue
+
+      await getDb().collection('notifications').add({
+        data: {
+          type: 'member_join',
+          targetId: admin.userId,
+          actorId: newMemberId,
+          actorName: newMemberName,
+          actorAvatar: '',
+          storyId: null,
+          preview: `${newMemberName} 加入了家庭`,
+          isRead: false,
+          createdAt: getDb().serverDate()
+        }
+      })
+    }
+
+    console.log(`[Family] Notified ${admins.length} admins of new member`)
+  } catch (error) {
+    console.error('[Family] Failed to notify admins:', error)
+    // Don't fail the join operation if notification fails
+  }
 }
 
 function formatDate(dateStr) {
