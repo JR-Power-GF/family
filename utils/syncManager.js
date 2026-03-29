@@ -28,12 +28,16 @@ async function uploadQueuePhotos(photoFiles) {
     const ext = compressed.ext || 'jpg'
     const cloudPath = `stories/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`
 
-    const { fileID } = await wx.cloud.uploadFile({
-      cloudPath,
-      filePath: compressed.path
-    })
-
-    uploadedUrls.push(fileID)
+    try {
+      const { fileID } = await wx.cloud.uploadFile({
+        cloudPath,
+        filePath: compressed.path
+      })
+      uploadedUrls.push(fileID)
+    } catch (uploadError) {
+      console.error(`[SyncManager] Failed to upload photo ${cloudPath}:`, uploadError)
+      throw new Error(`Photo upload failed: ${uploadError.message || uploadError.errMsg || 'Unknown error'}`)
+    }
   }
 
   return uploadedUrls
@@ -75,7 +79,7 @@ function showSyncSuccess(item) {
  */
 function showSyncFailed(item) {
   uni.showToast({
-    title: `"${item.caption.slice(0, 15)}..." 同步失败`,
+    title: `"${(item.caption || '').slice(0, 15)}..." 同步失败`,
     icon: 'none',
     duration: 3000
   })
