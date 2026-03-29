@@ -67,7 +67,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 
-const db = wx.cloud.database()
+// Lazy database initialization
+let db = null
+function getDb() {
+  if (!db) db = wx.cloud.database()
+  return db
+}
 
 const loading = ref(true)
 const notifications = ref([])
@@ -98,7 +103,7 @@ async function loadNotifications() {
     currentUserId.value = userInfo.openid
 
     // Get notifications for this user
-    const { data: notifs } = await db.collection('notifications')
+    const { data: notifs } = await getDb().collection('notifications')
       .where({
         targetId: userInfo.openid
       })
@@ -122,7 +127,7 @@ async function handleNotification(notification) {
   // Mark as read
   if (!notification.isRead) {
     try {
-      await db.collection('notifications').doc(notification._id).update({
+      await getDb().collection('notifications').doc(notification._id).update({
         data: { isRead: true }
       })
       notification.isRead = true
@@ -156,7 +161,7 @@ async function markAllAsRead() {
       const batch = unreadIds.slice(i, i + batchSize)
       await Promise.all(
         batch.map(id =>
-          db.collection('notifications').doc(id).update({
+          getDb().collection('notifications').doc(id).update({
             data: { isRead: true }
           })
         )
@@ -198,7 +203,7 @@ function confirmDelete(notification) {
 
 async function deleteNotification(notification) {
   try {
-    await db.collection('notifications').doc(notification._id).remove()
+    await getDb().collection('notifications').doc(notification._id).remove()
 
     // Remove from local list
     notifications.value = notifications.value.filter(n => n._id !== notification._id)
@@ -244,7 +249,7 @@ async function clearAllNotifications() {
       const batch = allIds.slice(i, i + batchSize)
       await Promise.all(
         batch.map(id =>
-          db.collection('notifications').doc(id).remove()
+          getDb().collection('notifications').doc(id).remove()
         )
       )
     }

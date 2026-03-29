@@ -103,7 +103,15 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 
-const db = wx.cloud.database()
+// Lazy database initialization
+let db = null
+function getDb() {
+  if (!db) {
+    db = wx.cloud.database()
+  }
+  return db
+}
+
 const loading = ref(true)
 const inviteCode = ref('')
 const members = ref([])
@@ -141,7 +149,7 @@ async function loadFamilyData() {
     currentUserId.value = userInfo.openid
 
     // Check if user is in a family
-    const { data: memberRecord } = await db.collection('family_members')
+    const { data: memberRecord } = await getDb().collection('family_members')
       .where({
         userId: userInfo.openid
       })
@@ -150,22 +158,22 @@ async function loadFamilyData() {
     if (memberRecord.length === 0) {
       // Create a new family for this user
       const inviteCode_gen = generateInviteCode()
-      const { _id: familyId } = await db.collection('families').add({
+      const { _id: familyId } = await getDb().collection('families').add({
         data: {
           inviteCode: inviteCode_gen,
           createdBy: userInfo.openid,
-          createdAt: db.serverDate()
+          createdAt: getDb().serverDate()
         }
       })
 
-      await db.collection('family_members').add({
+      await getDb().collection('family_members').add({
         data: {
           familyId,
           userId: userInfo.openid,
           nickName: userInfo.nickName || '匿名用户',
           avatar: userInfo.avatarUrl || '',
           isAdmin: true,
-          joinedAt: db.serverDate()
+          joinedAt: getDb().serverDate()
         }
       })
 
@@ -186,11 +194,11 @@ async function loadFamilyData() {
       isAdmin.value = family.isAdmin
 
       // Get invite code
-      const familyData = await db.collection('families').doc(family.familyId).get()
+      const familyData = await getDb().collection('families').doc(family.familyId).get()
       inviteCode.value = familyData.data.inviteCode
 
       // Get all members
-      const { data: allMembers } = await db.collection('family_members')
+      const { data: allMembers } = await getDb().collection('family_members')
         .where({
           familyId: family.familyId
         })
@@ -232,7 +240,7 @@ async function joinFamily() {
 
   try {
     // Find family by invite code
-    const { data: families } = await db.collection('families')
+    const { data: families } = await getDb().collection('families')
       .where({
         inviteCode: code
       })
@@ -258,14 +266,14 @@ async function joinFamily() {
     }).catch(() => ({ result: { openid: currentUserId.value, nickName: '匿名用户', avatarUrl: '' } }))
 
     // Join new family
-    await db.collection('family_members').add({
+    await getDb().collection('family_members').add({
       data: {
         familyId: targetFamily._id,
         userId: currentUserId.value,
         nickName: userInfo.nickName || '匿名用户',
         avatar: userInfo.avatarUrl || '',
         isAdmin: false,
-        joinedAt: db.serverDate()
+        joinedAt: getDb().serverDate()
       }
     })
 
@@ -292,7 +300,7 @@ async function joinFamily() {
 
 async function leaveCurrentFamily() {
   // Find and remove current membership
-  const { data: memberRecord } = await db.collection('family_members')
+  const { data: memberRecord } = await getDb().collection('family_members')
     .where({
       userId: currentUserId.value
     })
@@ -303,7 +311,7 @@ async function leaveCurrentFamily() {
 
     // If admin, check if there are other members
     if (membership.isAdmin) {
-      const { total } = await db.collection('family_members')
+      const { total } = await getDb().collection('family_members')
         .where({
           familyId: membership.familyId
         })
@@ -314,11 +322,11 @@ async function leaveCurrentFamily() {
       }
 
       // Delete family if admin is the only member
-      await db.collection('families').doc(membership.familyId).remove()
+      await getDb().collection('families').doc(membership.familyId).remove()
     }
 
     // Remove membership
-    await db.collection('family_members').doc(membership._id).remove()
+    await getDb().collection('family_members').doc(membership._id).remove()
   }
 }
 
@@ -383,7 +391,7 @@ function confirmRemoveMember(member) {
 
 async function removeMember(member) {
   try {
-    await db.collection('family_members').doc(member._id).remove()
+    await getDb().collection('family_members').doc(member._id).remove()
 
     uni.showToast({
       title: '已移除',
@@ -419,7 +427,7 @@ async function transferAdmin(member) {
 
   try {
     // Get current admin record
-    const { data: currentAdmin } = await db.collection('family_members')
+    const { data: currentAdmin } = await getDb().collection('family_members')
       .where({
         familyId: currentFamilyId.value,
         userId: currentUserId.value,
@@ -432,14 +440,14 @@ async function transferAdmin(member) {
     }
 
     // Remove admin from current user
-    await db.collection('family_members').doc(currentAdmin[0]._id).update({
+    await getDb().collection('family_members').doc(currentAdmin[0]._id).update({
       data: {
         isAdmin: false
       }
     })
 
     // Set admin to new user
-    await db.collection('family_members').doc(member._id).update({
+    await getDb().collection('family_members').doc(member._id).update({
       data: {
         isAdmin: true
       }

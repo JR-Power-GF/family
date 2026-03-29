@@ -112,7 +112,12 @@ import { ref, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { storiesApi } from '../../api/index.js'
 
-const db = wx.cloud.database()
+// Lazy database initialization
+let db = null
+function getDb() {
+  if (!db) db = wx.cloud.database()
+  return db
+}
 
 // Default avatar (simple SVG as data URI)
 const defaultAvatar = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle cx="50" cy="50" r="50" fill="%23e0e0e0"/%3E%3Ccircle cx="50" cy="40" r="18" fill="%23bdbdbd"/%3E%3Cellipse cx="50" cy="75" rx="28" ry="20" fill="%23bdbdbd"/%3E%3C/svg%3E'
@@ -176,7 +181,7 @@ async function loadProfile() {
     }
 
     // Load only current user's stories
-    const { data: stories } = await db.collection('stories')
+    const { data: stories } = await getDb().collection('stories')
       .where({
         authorId: userInfo.openid
       })
@@ -241,7 +246,7 @@ async function onRefresh() {
       name: 'getUserInfo'
     }).catch(() => ({ result: { openid: currentUserId.value } }))
 
-    const { data: stories } = await db.collection('stories')
+    const { data: stories } = await getDb().collection('stories')
       .where({
         authorId: currentUserId.value
       })
@@ -328,7 +333,7 @@ async function saveProfile() {
     const newName = editName.value.trim()
 
     // First, check if user has a family_members record
-    const { data: existingMembers } = await db.collection('family_members')
+    const { data: existingMembers } = await getDb().collection('family_members')
       .where({
         userId: currentUserId.value
       })
@@ -337,7 +342,7 @@ async function saveProfile() {
     if (existingMembers.length > 0) {
       // Update existing record
       const memberId = existingMembers[0]._id
-      await db.collection('family_members')
+      await getDb().collection('family_members')
         .doc(memberId)
         .update({
           data: {
@@ -347,19 +352,19 @@ async function saveProfile() {
         })
     } else {
       // Create new record (user might not have joined a family yet)
-      await db.collection('family_members').add({
+      await getDb().collection('family_members').add({
         data: {
           userId: currentUserId.value,
           nickName: newName,
           avatar: avatarToSave,
           isAdmin: false,
-          joinedAt: db.serverDate()
+          joinedAt: getDb().serverDate()
         }
       })
     }
 
     // Update user's stories author info
-    await db.collection('stories')
+    await getDb().collection('stories')
       .where({
         authorId: currentUserId.value
       })
