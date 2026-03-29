@@ -15,6 +15,7 @@ const emit = defineEmits(['tap'])
 
 const isOnline = ref(true)
 const queueCount = ref(0)
+let networkCallbackId = null
 
 function handleTap() {
   emit('tap', { queueCount: queueCount.value })
@@ -36,19 +37,28 @@ function updateOnlineStatus() {
   queueCount.value = queue.length
 }
 
+function handleNetworkChange(res) {
+  isOnline.value = res.isConnected
+
+  // Refresh queue count when coming online
+  if (res.isConnected) {
+    const queue = getOfflineQueue()
+    queueCount.value = queue.length
+  }
+}
+
 onMounted(() => {
   updateOnlineStatus()
 
   // Listen for network changes
-  uni.onNetworkStatusChange?.((res) => {
-    isOnline.value = res.isConnected
+  networkCallbackId = uni.onNetworkStatusChange?.(handleNetworkChange)
+})
 
-    // Refresh queue count when coming online
-    if (res.isConnected) {
-      const queue = getOfflineQueue()
-      queueCount.value = queue.length
-    }
-  })
+onUnmounted(() => {
+  // Clean up network listener
+  if (networkCallbackId) {
+    uni.offNetworkStatusChange?.(networkCallbackId)
+  }
 })
 
 defineExpose({ isOnline, queueCount, updateOnlineStatus })

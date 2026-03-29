@@ -78,7 +78,7 @@
 import { ref, computed } from 'vue'
 import { storiesApi } from '../../api/index.js'
 import { getCompressedImage } from '../../utils/image.js'
-import { isOnline, saveStoryToQueue, getPendingStories } from '../../utils/offline.js'
+import { isOnline, saveStoryToQueue } from '../../utils/offline.js'
 
 const MAX_PHOTOS = 9  // 3×3 grid, common pattern for photo pickers
 
