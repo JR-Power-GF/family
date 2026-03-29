@@ -24,7 +24,10 @@
         <view class="invite-card">
           <text class="invite-label">邀请码</text>
           <text class="invite-code">{{ inviteCode || '加载中...' }}</text>
-          <button class="copy-btn" @click="copyInviteCode">复制</button>
+          <view class="invite-actions">
+            <button class="copy-btn" @click="copyInviteCode">复制</button>
+            <button class="share-btn" open-type="share">分享</button>
+          </view>
         </view>
         <text class="invite-tip">分享邀请码给家人，即可加入</text>
       </view>
@@ -102,6 +105,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useShareAppMessage, onLoad } from '@dcloudio/uni-app'
 
 // Lazy database initialization
 let db = null
@@ -124,8 +128,26 @@ const showJoinModal = ref(false)
 const inputCode = ref('')
 const joining = ref(false)
 
+// Share handler for WeChat
+useShareAppMessage(() => {
+  return {
+    title: '邀请你加入我的家庭',
+    path: `/pages/family/family?inviteCode=${inviteCode.value}`,
+    imageUrl: '/static/logo.png'
+  }
+})
+
 onMounted(async () => {
   await loadFamilyData()
+})
+
+// Handle share link with invite code
+onLoad((options) => {
+  if (options?.inviteCode) {
+    // User came via share link
+    inputCode.value = options.inviteCode.toUpperCase()
+    showJoinModal.value = true
+  }
 })
 
 async function loadFamilyData() {
@@ -562,7 +584,14 @@ function formatDate(dateStr) {
   margin-bottom: 24rpx;
 }
 
-.copy-btn {
+.invite-actions {
+  display: flex;
+  gap: 24rpx;
+  justify-content: center;
+}
+
+.copy-btn,
+.share-btn {
   background-color: $uni-color-primary;
   color: #fff;
   font-size: 28rpx;
@@ -573,6 +602,10 @@ function formatDate(dateStr) {
   &:active {
     opacity: 0.8;
   }
+}
+
+.share-btn {
+  background-color: #07C160;
 }
 
 .invite-tip {
