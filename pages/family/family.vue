@@ -13,89 +13,129 @@
 
     <!-- Content -->
     <view v-else>
-      <!-- Header -->
+      <!-- Header with gradient -->
       <view class="header-section">
-        <text class="header-title">家庭成员</text>
-        <text class="header-subtitle">管理你的家庭群组</text>
+        <view class="header-bg"></view>
+        <view class="header-content">
+          <text class="header-icon">👨‍👩‍👧‍👦</text>
+          <text class="header-title">我的家庭</text>
+          <text class="header-subtitle">{{ members.length }} 位成员</text>
+        </view>
       </view>
 
-      <!-- Invite Code Section -->
+      <!-- Invite Code Card -->
       <view class="invite-section">
         <view class="invite-card">
-          <text class="invite-label">邀请码</text>
-          <text class="invite-code">{{ inviteCode || '加载中...' }}</text>
+          <view class="invite-header">
+            <text class="invite-label">邀请家人加入</text>
+            <view class="invite-divider"></view>
+          </view>
+          <view class="invite-code-wrapper">
+            <text class="invite-code-char" v-for="(char, index) in (inviteCode || '------').split('')" :key="index">{{ char }}</text>
+          </view>
           <view class="invite-actions">
-            <button class="copy-btn" @click="copyInviteCode">复制</button>
-            <button class="share-btn" open-type="share">分享</button>
+            <button class="action-btn-primary" @click="copyInviteCode">
+              <text class="btn-icon">📋</text>
+              <text>复制邀请码</text>
+            </button>
+            <button class="action-btn-secondary" open-type="share">
+              <text class="btn-icon">📤</text>
+              <text>分享给微信好友</text>
+            </button>
           </view>
         </view>
-        <text class="invite-tip">分享邀请码给家人，即可加入</text>
+        <text class="invite-tip">家人通过邀请码即可加入</text>
       </view>
 
-      <!-- Action Buttons -->
-      <view class="action-section">
-        <button class="action-btn join-btn" @click="showJoinModal = true">
-          <text class="action-icon">➕</text>
-          <text>加入其他家庭</text>
-        </button>
-        <button class="action-btn exit-btn" @click="confirmExit">
-          <text class="action-icon">🚪</text>
-          <text>退出当前家庭</text>
-        </button>
+      <!-- Quick Actions -->
+      <view class="quick-actions">
+        <view class="action-card" @click="showJoinModal = true">
+          <view class="action-icon-wrap join">
+            <text class="action-card-icon">➕</text>
+          </view>
+          <text class="action-card-title">加入其他家庭</text>
+          <text class="action-card-desc">使用邀请码加入</text>
+        </view>
+        <view class="action-card" @click="confirmExit">
+          <view class="action-icon-wrap exit">
+            <text class="action-card-icon">🚪</text>
+          </view>
+          <text class="action-card-title">退出家庭</text>
+          <text class="action-card-desc">离开当前家庭</text>
+        </view>
       </view>
 
       <!-- Members List -->
       <view class="members-section">
         <view class="section-header">
           <text class="section-title">成员列表</text>
-          <text class="member-count">{{ members.length }} 人</text>
+          <text class="member-count-badge">{{ members.length }} 人</text>
         </view>
 
         <view class="members-list">
-          <view v-for="member in members" :key="member._id" class="member-item">
-            <image class="member-avatar" :src="member.avatar || '/static/default-avatar.svg'" mode="aspectFill" @error="() => member.avatar = ''" />
+          <view v-for="member in members" :key="member._id" class="member-card">
+            <view class="member-avatar-wrap">
+              <image class="member-avatar" :src="member.avatar || '/static/default-avatar.svg'" mode="aspectFill" @error="() => member.avatar = ''" />
+              <view v-if="member.isAdmin" class="admin-dot"></view>
+            </view>
             <view class="member-info">
-              <text class="member-name">{{ member.nickName || '匿名用户' }}</text>
-              <text class="member-joined">加入于 {{ formatDate(member.joinedAt) }}</text>
+              <view class="member-name-row">
+                <text class="member-name">{{ member.nickName || '匿名用户' }}</text>
+                <view v-if="member.isAdmin" class="admin-tag">
+                  <text>管理员</text>
+                </view>
+              </view>
+              <text class="member-joined">{{ formatDate(member.joinedAt) }} 加入</text>
             </view>
-            <view v-if="member.isAdmin" class="admin-badge">
-              <text>管理员</text>
-            </view>
-            <!-- Remove member button (admin only, not for self) -->
+            <!-- Admin actions -->
             <view
               v-if="isAdmin && !member.isAdmin && member.userId !== currentUserId"
               class="member-actions"
             >
-              <text class="transfer-btn" @click="confirmTransferAdmin(member)">转让管理员</text>
-              <text class="remove-btn" @click="confirmRemoveMember(member)">移除</text>
+              <view class="action-icon-btn" @click="confirmTransferAdmin(member)">
+                <text>👑</text>
+              </view>
+              <view class="action-icon-btn danger" @click="confirmRemoveMember(member)">
+                <text>✕</text>
+              </view>
             </view>
           </view>
         </view>
-      </view>
 
-      <!-- Empty State -->
-      <view v-if="members.length === 0" class="empty-state">
-        <text class="empty-text">暂无家庭成员</text>
-        <text class="empty-tip">分享邀请码邀请家人加入</text>
+        <!-- Empty State -->
+        <view v-if="members.length === 0" class="empty-state">
+          <text class="empty-icon">👋</text>
+          <text class="empty-text">还没有家庭成员</text>
+          <text class="empty-tip">分享邀请码邀请家人加入吧</text>
+        </view>
       </view>
     </view>
 
     <!-- Join Family Modal -->
     <view v-if="showJoinModal" class="modal-overlay" @click="showJoinModal = false">
       <view class="modal-content" @click.stop>
-        <text class="modal-title">加入家庭</text>
-        <text class="modal-subtitle">请输入6位邀请码</text>
-        <input
-          class="code-input"
-          v-model="inputCode"
-          placeholder="输入邀请码"
-          maxlength="6"
-          @input="inputCode = inputCode.toUpperCase()"
-        />
-        <view class="modal-buttons">
+        <view class="modal-header">
+          <text class="modal-title">加入其他家庭</text>
+          <view class="modal-close" @click="showJoinModal = false">
+            <text>✕</text>
+          </view>
+        </view>
+        <view class="modal-body">
+          <text class="modal-desc">请输入6位邀请码</text>
+          <view class="code-input-wrapper">
+            <input
+              class="code-input"
+              v-model="inputCode"
+              placeholder="XXXXXX"
+              maxlength="6"
+              @input="inputCode = inputCode.toUpperCase()"
+            />
+          </view>
+        </view>
+        <view class="modal-footer">
           <button class="modal-btn cancel" @click="showJoinModal = false">取消</button>
-          <button class="modal-btn confirm" :disabled="joining" @click="joinFamily">
-            {{ joining ? '加入中...' : '加入' }}
+          <button class="modal-btn confirm" :disabled="joining || inputCode.length !== 6" @click="joinFamily">
+            {{ joining ? '加入中...' : '立即加入' }}
           </button>
         </view>
       </view>
@@ -580,240 +620,366 @@ function formatDate(dateStr) {
 <style lang="scss" scoped>
 .family-page {
   min-height: 100vh;
-  background-color: $uni-bg-color-grey;
-  padding: 32rpx;
+  background-color: #f5f7fa;
   padding-bottom: 100rpx;
 }
 
+/* Header Section with Gradient */
 .header-section {
-  padding: 32rpx 0;
-  text-align: center;
+  position: relative;
+  padding: 48rpx 32rpx 80rpx;
+  margin-bottom: -40rpx;
 }
 
-.header-title {
-  font-size: 48rpx;
-  font-weight: 600;
-  color: $uni-text-color;
-  display: block;
-  margin-bottom: 12rpx;
+.header-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 0 0 48rpx 48rpx;
 }
 
-.header-subtitle {
-  font-size: 28rpx;
-  color: $uni-text-color-grey;
-}
-
-.invite-section {
-  margin-bottom: 32rpx;
-}
-
-.invite-card {
-  background-color: #fff;
-  border-radius: 24rpx;
-  padding: 32rpx;
+.header-content {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.invite-label {
-  font-size: 26rpx;
-  color: $uni-text-color-grey;
+.header-icon {
+  font-size: 64rpx;
   margin-bottom: 16rpx;
 }
 
-.invite-code {
-  font-size: 48rpx;
-  font-weight: 600;
-  color: $uni-color-primary;
-  letter-spacing: 8rpx;
-  margin-bottom: 24rpx;
+.header-title {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8rpx;
+}
+
+.header-subtitle {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Invite Card */
+.invite-section {
+  padding: 0 32rpx;
+  margin-bottom: 32rpx;
+}
+
+.invite-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
+}
+
+.invite-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+
+.invite-label {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.invite-divider {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, #eee 0%, transparent 100%);
+  margin-left: 24rpx;
+}
+
+.invite-code-wrapper {
+  display: flex;
+  justify-content: center;
+  gap: 12rpx;
+  margin-bottom: 32rpx;
+}
+
+.invite-code-char {
+  width: 72rpx;
+  height: 88rpx;
+  background: linear-gradient(135deg, #f8f9ff 0%, #eef1ff 100%);
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #667eea;
+  box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.15);
 }
 
 .invite-actions {
   display: flex;
-  gap: 24rpx;
-  justify-content: center;
+  gap: 20rpx;
 }
 
-.copy-btn,
-.share-btn {
-  background-color: $uni-color-primary;
-  color: #fff;
+.action-btn-primary,
+.action-btn-secondary {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 24rpx 0;
+  border-radius: 16rpx;
   font-size: 28rpx;
-  padding: 12rpx 48rpx;
-  border-radius: 40rpx;
+  font-weight: 500;
   border: none;
 
-  &:active {
-    opacity: 0.8;
+  .btn-icon {
+    font-size: 32rpx;
   }
 }
 
-.share-btn {
-  background-color: #07C160;
+.action-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  box-shadow: 0 6rpx 20rpx rgba(102, 126, 234, 0.35);
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.action-btn-secondary {
+  background: #f5f7fa;
+  color: #333;
+
+  &:active {
+    background: #eef1f5;
+  }
 }
 
 .invite-tip {
   display: block;
   text-align: center;
   font-size: 24rpx;
-  color: $uni-text-color-grey;
-  margin-top: 16rpx;
+  color: #999;
+  margin-top: 20rpx;
 }
 
-.action-section {
+/* Quick Actions */
+.quick-actions {
   display: flex;
-  gap: 24rpx;
+  gap: 20rpx;
+  padding: 0 32rpx;
   margin-bottom: 32rpx;
 }
 
-.action-btn {
+.action-card {
   flex: 1;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 28rpx 24rpx;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  background-color: #fff;
-  border-radius: 16rpx;
-  padding: 24rpx;
-  border: none;
-  font-size: 28rpx;
-  color: $uni-text-color;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
 
   &:active {
-    opacity: 0.8;
+    background: #fafafa;
   }
 }
 
-.action-icon {
-  margin-right: 12rpx;
+.action-icon-wrap {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 18rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16rpx;
+
+  &.join {
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+  }
+
+  &.exit {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  }
 }
 
-.exit-btn {
-  color: #ff4d4f;
+.action-card-icon {
+  font-size: 36rpx;
 }
 
+.action-card-title {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 4rpx;
+}
+
+.action-card-desc {
+  font-size: 22rpx;
+  color: #999;
+}
+
+/* Members Section */
 .members-section {
-  background-color: #fff;
+  margin: 0 32rpx;
+  background: #fff;
   border-radius: 24rpx;
   padding: 32rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
 }
 
 .section-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   margin-bottom: 24rpx;
 }
 
 .section-title {
   font-size: 32rpx;
-  font-weight: 500;
-  color: $uni-text-color;
+  font-weight: 600;
+  color: #333;
 }
 
-.member-count {
-  font-size: 26rpx;
-  color: $uni-text-color-grey;
+.member-count-badge {
+  font-size: 24rpx;
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
 }
 
 .members-list {
   display: flex;
   flex-direction: column;
+  gap: 16rpx;
 }
 
-.member-item {
+.member-card {
   display: flex;
   align-items: center;
-  padding: 24rpx 0;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 20rpx;
+  background: #f8f9fc;
+  border-radius: 16rpx;
+  transition: all 0.2s;
 
-  &:last-child {
-    border-bottom: none;
+  &:active {
+    background: #f0f2f7;
   }
+}
+
+.member-avatar-wrap {
+  position: relative;
+  margin-right: 20rpx;
 }
 
 .member-avatar {
   width: 80rpx;
   height: 80rpx;
+  border-radius: 20rpx;
+  background-color: #e0e0e0;
+}
+
+.admin-dot {
+  position: absolute;
+  bottom: -2rpx;
+  right: -2rpx;
+  width: 24rpx;
+  height: 24rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 50%;
-  background-color: #f0f0f0;
-  margin-right: 24rpx;
+  border: 3rpx solid #fff;
 }
 
 .member-info {
   flex: 1;
 }
 
+.member-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 6rpx;
+}
+
 .member-name {
   font-size: 30rpx;
-  color: $uni-text-color;
-  display: block;
-  margin-bottom: 8rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.admin-tag {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
 }
 
 .member-joined {
   font-size: 24rpx;
-  color: $uni-text-color-grey;
-}
-
-.admin-badge {
-  background-color: $uni-color-primary;
-  color: #fff;
-  font-size: 22rpx;
-  padding: 8rpx 16rpx;
-  border-radius: 8rpx;
+  color: #999;
 }
 
 .member-actions {
   display: flex;
-  gap: 16rpx;
+  gap: 12rpx;
 }
 
-.transfer-btn {
-  color: $uni-color-primary;
-  font-size: 24rpx;
-  padding: 8rpx 16rpx;
-  background-color: rgba(0, 122, 255, 0.1);
-  border-radius: 8rpx;
+.action-icon-btn {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(102, 126, 234, 0.1);
+  font-size: 28rpx;
 
   &:active {
     opacity: 0.7;
   }
-}
 
-.remove-btn {
-  color: #ff4d4f;
-  font-size: 24rpx;
-  padding: 8rpx 16rpx;
-  background-color: rgba(255, 77, 79, 0.1);
-  border-radius: 8rpx;
-
-  &:active {
-    opacity: 0.7;
+  &.danger {
+    background: rgba(255, 77, 79, 0.1);
+    color: #ff4d4f;
   }
 }
 
+/* Empty State */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 80rpx 0;
+  padding: 60rpx 0;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 20rpx;
 }
 
 .empty-text {
   font-size: 32rpx;
-  color: $uni-text-color-grey;
-  margin-bottom: 16rpx;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 12rpx;
 }
 
 .empty-tip {
   font-size: 26rpx;
-  color: $uni-text-color-grey;
-  opacity: 0.7;
+  color: #999;
 }
 
-/* Modal styles */
+/* Modal Styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -828,61 +994,109 @@ function formatDate(dateStr) {
 }
 
 .modal-content {
-  width: 600rpx;
+  width: 620rpx;
   background-color: #fff;
-  border-radius: 24rpx;
-  padding: 48rpx;
+  border-radius: 28rpx;
+  overflow: hidden;
+  animation: modal-in 0.25s ease-out;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20rpx);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx;
+  border-bottom: 1px solid #f0f0f0;
 }
 
 .modal-title {
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 600;
-  color: $uni-text-color;
-  display: block;
-  text-align: center;
-  margin-bottom: 12rpx;
+  color: #333;
 }
 
-.modal-subtitle {
+.modal-close {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 50%;
   font-size: 28rpx;
-  color: $uni-text-color-grey;
-  display: block;
+  color: #999;
+
+  &:active {
+    background: #eee;
+  }
+}
+
+.modal-body {
+  padding: 32rpx;
+}
+
+.modal-desc {
+  font-size: 28rpx;
+  color: #666;
   text-align: center;
-  margin-bottom: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.code-input-wrapper {
+  background: #f5f7fa;
+  border-radius: 16rpx;
+  padding: 8rpx;
 }
 
 .code-input {
   width: 100%;
-  height: 88rpx;
-  background-color: #f5f5f5;
-  border-radius: 16rpx;
+  height: 96rpx;
+  background-color: #fff;
+  border-radius: 12rpx;
   padding: 0 24rpx;
-  font-size: 36rpx;
+  font-size: 40rpx;
+  font-weight: 600;
   text-align: center;
-  letter-spacing: 16rpx;
+  letter-spacing: 20rpx;
   box-sizing: border-box;
+  color: #333;
 }
 
-.modal-buttons {
+.modal-footer {
   display: flex;
-  gap: 24rpx;
-  margin-top: 32rpx;
+  gap: 20rpx;
+  padding: 0 32rpx 32rpx;
 }
 
 .modal-btn {
   flex: 1;
-  height: 80rpx;
-  font-size: 30rpx;
-  border-radius: 40rpx;
+  height: 88rpx;
+  font-size: 32rpx;
+  font-weight: 500;
+  border-radius: 16rpx;
   border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   &.cancel {
-    background-color: #f0f0f0;
-    color: $uni-text-color-grey;
+    background-color: #f5f7fa;
+    color: #666;
   }
 
   &.confirm {
-    background-color: $uni-color-primary;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #fff;
 
     &[disabled] {
