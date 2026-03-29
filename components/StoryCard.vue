@@ -108,7 +108,6 @@ const syncStatusText = computed(() => {
   }
 })
 
-const isSyncing = computed(() => props.syncStatus === 'syncing')
 const canRetry = computed(() => props.syncStatus === 'failed')
 
 // Handle avatar load error
