@@ -1,4 +1,5 @@
 <script setup>
+import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
 import { cacheManager, CacheKeys } from './utils/cache.js'
 import { recoverStaleItems } from './utils/offline.js'
 import { syncManager } from './utils/syncManager.js'
