@@ -178,6 +178,33 @@ export const storiesApi = {
   },
 
   /**
+   * Create a story from offline queue (with pre-uploaded URLs)
+   * Preserves original queued timestamp
+   */
+  async createStoryFromQueue({ photoUrls, caption, authorId, authorName, authorAvatar, queuedAt }) {
+    const db = wx.cloud.database()
+
+    const { _id } = await db.collection('stories').add({
+      data: {
+        photoUrls,
+        photoUrl: photoUrls[0],
+        caption,
+        authorId,
+        authorName,
+        authorAvatar,
+        createdAt: new Date(queuedAt),  // Preserve original timestamp
+        syncedAt: db.serverDate()
+      }
+    })
+
+    // Invalidate cache
+    cacheManager.delete(CacheKeys.STORIES)
+
+    // Return the created story
+    return await this.getStory(_id, true)
+  },
+
+  /**
    * Update a story (only caption can be updated)
    */
   async updateStory(id, { caption }) {
