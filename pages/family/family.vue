@@ -4,7 +4,6 @@
     <view v-if="loading" class="loading-container">
       <view class="loading-header"></view>
       <view class="loading-card"></view>
-      <view class="loading-actions"></view>
       <view class="loading-members">
         <view class="loading-member-item"></view>
         <view class="loading-member-item"></view>
@@ -45,24 +44,6 @@
           </view>
         </view>
         <text class="invite-tip">家人通过邀请码即可加入</text>
-      </view>
-
-      <!-- Quick Actions -->
-      <view class="quick-actions">
-        <view class="action-card" @click="showJoinModal = true">
-          <view class="action-icon-wrap join">
-            <text class="action-card-icon">➕</text>
-          </view>
-          <text class="action-card-title">加入其他家庭</text>
-          <text class="action-card-desc">使用邀请码加入</text>
-        </view>
-        <view class="action-card" @click="confirmExit">
-          <view class="action-icon-wrap exit">
-            <text class="action-card-icon">🚪</text>
-          </view>
-          <text class="action-card-title">退出家庭</text>
-          <text class="action-card-desc">离开当前家庭</text>
-        </view>
       </view>
 
       <!-- Members List -->
@@ -110,42 +91,11 @@
         </view>
       </view>
     </view>
-
-    <!-- Join Family Modal -->
-    <view v-if="showJoinModal" class="modal-overlay" @click="showJoinModal = false">
-      <view class="modal-content" @click.stop>
-        <view class="modal-header">
-          <text class="modal-title">加入其他家庭</text>
-          <view class="modal-close" @click="showJoinModal = false">
-            <text>✕</text>
-          </view>
-        </view>
-        <view class="modal-body">
-          <text class="modal-desc">请输入6位邀请码</text>
-          <view class="code-input-wrapper">
-            <input
-              class="code-input"
-              v-model="inputCode"
-              placeholder="XXXXXX"
-              maxlength="6"
-              @input="inputCode = inputCode.toUpperCase()"
-            />
-          </view>
-        </view>
-        <view class="modal-footer">
-          <button class="modal-btn cancel" @click="showJoinModal = false">取消</button>
-          <button class="modal-btn confirm" :disabled="joining || inputCode.length !== 6" @click="joinFamily">
-            {{ joining ? '加入中...' : '立即加入' }}
-          </button>
-        </view>
-      </view>
-    </view>
   </view>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
 
 // Lazy database initialization
 let db = null
@@ -163,25 +113,11 @@ const isAdmin = ref(false)
 const currentUserId = ref('')
 const currentFamilyId = ref('')
 
-// Join family modal
-const showJoinModal = ref(false)
-const inputCode = ref('')
-const joining = ref(false)
-
 onMounted(async () => {
   await loadFamilyData()
 })
 
-// Handle share link with invite code
-onLoad((options) => {
-  if (options?.inviteCode) {
-    // User came via share link
-    inputCode.value = options.inviteCode.toUpperCase()
-    showJoinModal.value = true
-  }
-})
-
-// Share handler - using defineExpose for uni-app
+// Share handler
 const onShareAppMessage = () => {
   return {
     title: '邀请你加入我的家庭',
@@ -280,172 +216,6 @@ async function loadFamilyData() {
     })
   } finally {
     loading.value = false
-  }
-}
-
-async function joinFamily() {
-  const code = inputCode.value.trim().toUpperCase()
-
-  if (code.length !== 6) {
-    uni.showToast({
-      title: '请输入6位邀请码',
-      icon: 'none'
-    })
-    return
-  }
-
-  if (code === inviteCode.value) {
-    uni.showToast({
-      title: '已经是当前家庭成员',
-      icon: 'none'
-    })
-    return
-  }
-
-  joining.value = true
-
-  try {
-    // Find family by invite code
-    const { data: families } = await getDb().collection('families')
-      .where({
-        inviteCode: code
-      })
-      .get()
-
-    if (families.length === 0) {
-      uni.showToast({
-        title: '邀请码不存在',
-        icon: 'none'
-      })
-      joining.value = false
-      return
-    }
-
-    const targetFamily = families[0]
-
-    // Leave current family first
-    await leaveCurrentFamily()
-
-    // Get user info
-    const { result: userInfo } = await wx.cloud.callFunction({
-      name: 'getUserInfo'
-    }).catch(() => ({ result: { openid: currentUserId.value, nickName: '匿名用户', avatarUrl: '' } }))
-
-    // Join new family
-    await getDb().collection('family_members').add({
-      data: {
-        familyId: targetFamily._id,
-        userId: currentUserId.value,
-        nickName: userInfo.nickName || '匿名用户',
-        avatar: userInfo.avatarUrl || '',
-        isAdmin: false,
-        joinedAt: getDb().serverDate()
-      }
-    })
-
-    // Notify all admins of the family about new member
-    await notifyAdminsOfNewMember({
-      familyId: targetFamily._id,
-      newMemberName: userInfo.nickName || '匿名用户',
-      newMemberId: currentUserId.value
-    })
-
-    showJoinModal.value = false
-    inputCode.value = ''
-
-    uni.showToast({
-      title: '加入成功',
-      icon: 'success'
-    })
-
-    // Reload family data
-    await loadFamilyData()
-  } catch (error) {
-    console.error('Failed to join family:', error)
-    uni.showToast({
-      title: '加入失败',
-      icon: 'none'
-    })
-  } finally {
-    joining.value = false
-  }
-}
-
-async function leaveCurrentFamily() {
-  // Find and remove current membership
-  const { data: memberRecord } = await getDb().collection('family_members')
-    .where({
-      userId: currentUserId.value
-    })
-    .get()
-
-  if (memberRecord.length > 0) {
-    const membership = memberRecord[0]
-
-    // If admin, check if there are other members
-    if (membership.isAdmin) {
-      const { total } = await getDb().collection('family_members')
-        .where({
-          familyId: membership.familyId
-        })
-        .count()
-
-      if (total > 1) {
-        throw new Error('请先移除其他成员或转让管理员')
-      }
-
-      // Delete family if admin is the only member
-      await getDb().collection('families').doc(membership.familyId).remove()
-    }
-
-    // Remove membership
-    await getDb().collection('family_members').doc(membership._id).remove()
-  }
-}
-
-function confirmExit() {
-  if (isAdmin.value && members.value.length > 1) {
-    uni.showModal({
-      title: '无法退出',
-      content: '管理员需要先转让管理员权限或移除其他成员才能退出家庭',
-      showCancel: false
-    })
-    return
-  }
-
-  uni.showModal({
-    title: '确认退出',
-    content: '退出后将无法查看家庭故事，确定要退出吗？',
-    confirmColor: '#ff4d4f',
-    success: (res) => {
-      if (res.confirm) {
-        exitFamily()
-      }
-    }
-  })
-}
-
-async function exitFamily() {
-  uni.showLoading({ title: '退出中...', mask: true })
-
-  try {
-    await leaveCurrentFamily()
-
-    uni.hideLoading()
-    uni.showToast({
-      title: '已退出家庭',
-      icon: 'success'
-    })
-
-    // Reload to create new family
-    await loadFamilyData()
-  } catch (error) {
-    uni.hideLoading()
-    console.error('Failed to exit family:', error)
-    uni.showToast({
-      title: error.message || '退出失败',
-      icon: 'none'
-    })
   }
 }
 
@@ -774,63 +544,6 @@ function formatDate(dateStr) {
   margin-top: 20rpx;
 }
 
-/* Quick Actions */
-.quick-actions {
-  display: flex;
-  gap: 20rpx;
-  padding: 0 32rpx;
-  margin-bottom: 32rpx;
-}
-
-.action-card {
-  flex: 1;
-  background: #fff;
-  border-radius: 20rpx;
-  padding: 28rpx 24rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
-
-  &:active {
-    background: #fafafa;
-  }
-}
-
-.action-icon-wrap {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 18rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16rpx;
-
-  &.join {
-    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-  }
-
-  &.exit {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-  }
-}
-
-.action-card-icon {
-  font-size: 36rpx;
-}
-
-.action-card-title {
-  font-size: 28rpx;
-  color: #333;
-  font-weight: 500;
-  margin-bottom: 4rpx;
-}
-
-.action-card-desc {
-  font-size: 22rpx;
-  color: #999;
-}
-
 /* Members Section */
 .members-section {
   margin: 0 32rpx;
@@ -983,132 +696,6 @@ function formatDate(dateStr) {
   color: #999;
 }
 
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  width: 620rpx;
-  background-color: #fff;
-  border-radius: 28rpx;
-  overflow: hidden;
-  animation: modal-in 0.25s ease-out;
-}
-
-@keyframes modal-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(20rpx);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 32rpx;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.modal-title {
-  font-size: 34rpx;
-  font-weight: 600;
-  color: #333;
-}
-
-.modal-close {
-  width: 56rpx;
-  height: 56rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f5f5f5;
-  border-radius: 50%;
-  font-size: 28rpx;
-  color: #999;
-
-  &:active {
-    background: #eee;
-  }
-}
-
-.modal-body {
-  padding: 32rpx;
-}
-
-.modal-desc {
-  font-size: 28rpx;
-  color: #666;
-  text-align: center;
-  margin-bottom: 24rpx;
-}
-
-.code-input-wrapper {
-  background: #f5f7fa;
-  border-radius: 16rpx;
-  padding: 8rpx;
-}
-
-.code-input {
-  width: 100%;
-  height: 96rpx;
-  background-color: #fff;
-  border-radius: 12rpx;
-  padding: 0 24rpx;
-  font-size: 40rpx;
-  font-weight: 600;
-  text-align: center;
-  letter-spacing: 20rpx;
-  box-sizing: border-box;
-  color: #333;
-}
-
-.modal-footer {
-  display: flex;
-  gap: 20rpx;
-  padding: 0 32rpx 32rpx;
-}
-
-.modal-btn {
-  flex: 1;
-  height: 88rpx;
-  font-size: 32rpx;
-  font-weight: 500;
-  border-radius: 16rpx;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  &.cancel {
-    background-color: #f5f7fa;
-    color: #666;
-  }
-
-  &.confirm {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
-
-    &[disabled] {
-      opacity: 0.5;
-    }
-  }
-}
-
 /* Loading skeleton styles */
 .loading-container {
   padding: 32rpx;
@@ -1132,23 +719,6 @@ function formatDate(dateStr) {
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s infinite;
   margin-bottom: 32rpx;
-}
-
-.loading-actions {
-  display: flex;
-  gap: 24rpx;
-  margin-bottom: 32rpx;
-}
-
-.loading-actions::before,
-.loading-actions::after {
-  content: '';
-  flex: 1;
-  height: 96rpx;
-  border-radius: 16rpx;
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: skeleton-loading 1.5s infinite;
 }
 
 .loading-members {
